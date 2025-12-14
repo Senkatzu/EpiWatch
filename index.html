@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1e3a8a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>EpiWatch - Secure System v7</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -38,7 +41,24 @@
         #app-container { display: none; height: 100%; width: 100%; }
 
         /* --- SIDEBAR --- */
-        .sidebar { width: 240px; background: var(--dark); color: white; display: flex; flex-direction: column; flex-shrink: 0; height: 100%; }
+        .sidebar { 
+            width: 240px; 
+            background: var(--dark); 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+            flex-shrink: 0; 
+            height: 100%;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 100;
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
         .brand { padding: 20px; font-size: 20px; font-weight: bold; color: var(--secondary); border-bottom: 1px solid #334155; }
         .nav-item { padding: 15px 20px; cursor: pointer; color: #94a3b8; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
         .nav-item:hover, .nav-item.active { background: #1e293b; color: white; border-left: 4px solid var(--secondary); }
@@ -49,7 +69,27 @@
 
         /* --- MAIN LAYOUT --- */
         .main { flex: 1; display: flex; flex-direction: column; position: relative; height: 100%; }
-        .header { height: 60px; background: white; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
+        .header { 
+            height: 60px; 
+            background: white; 
+            padding: 0 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 1px solid #e2e8f0; 
+            flex-shrink: 0;
+            position: sticky;
+            top: 0;
+            z-index: 90;
+        }
+        
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
         .content-area { flex: 1; position: relative; overflow: hidden; padding: 20px; }
         
         /* PAGES */
@@ -57,7 +97,12 @@
         .page.active { display: flex; }
 
         /* --- DASHBOARD CARDS --- */
-        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; flex-shrink: 0; }
+        .stats-row { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 15px; 
+            flex-shrink: 0; 
+        }
         .card { 
             background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
             transition: transform 0.2s; position: relative; overflow: hidden;
@@ -74,9 +119,20 @@
         .btn-view-map { width: 100%; background: var(--danger); color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; }
 
         /* --- LAYOUTS --- */
-        .dashboard-split { flex: 1; display: grid; grid-template-columns: 2fr 1fr; gap: 20px; min-height: 0; }
+        .dashboard-split { 
+            flex: 1; 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 20px; 
+            min-height: 0; 
+        }
         .panel { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; overflow: hidden; }
-        .reports-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; height: 100%; }
+        .reports-layout { 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 20px; 
+            height: 100%; 
+        }
 
         .panel-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: var(--primary); margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         .btn-mini { padding: 5px 10px; font-size: 11px; border: 1px solid #cbd5e1; background: white; border-radius: 4px; cursor: pointer; color: #334155; margin-left: 5px; transition: 0.2s; }
@@ -102,6 +158,60 @@
 
         .map-legend { position: absolute; bottom: 20px; right: 20px; background: white; padding: 10px; border-radius: 8px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 12px; }
         .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        /* --- RESPONSIVE STYLES --- */
+        @media (min-width: 768px) {
+            .dashboard-split {
+                grid-template-columns: 2fr 1fr;
+            }
+            
+            .reports-layout {
+                grid-template-columns: 350px 1fr;
+            }
+            
+            .content-area {
+                margin-left: 240px;
+                width: calc(100% - 240px);
+            }
+            
+            .sidebar:not(.collapsed) + .main .content-area {
+                margin-left: 0;
+                width: 100%;
+            }
+        }
+        
+        @media (max-width: 767px) {
+            .menu-toggle {
+                display: block;
+            }
+            
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.show-mobile {
+                transform: translateX(0);
+            }
+            
+            .content-area {
+                margin-left: 0;
+                width: 100%;
+                padding: 15px;
+            }
+            
+            .panel {
+                padding: 15px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .card .val {
+                font-size: 24px;
+            }
+            
+            .header h2 {
+                font-size: 1.1rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -127,7 +237,10 @@
 
     <div id="app-container">
         <nav class="sidebar">
-            <div class="brand">🩺 EpiWatch</div>
+            <div class="brand">
+                <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE2IDI5LjMzM0M4LjYzNiAyOS4zMzMgMi42NjY2MyAyMy4zNjQgMi42NjY2MyAxNkMyLjY2NjYzIDguNjM2MDEgOC42MzYgMi42NjY2NyAxNiAyLjY2NjY3QzIzLjM2NCAyLjY2NjY3IDI5LjMzMzMgOC42MzYwMSAyOS4zMzMzIDE2QzI5LjMzMzMgMjMuMzY0IDIzLjM2NCAyOS4zMzMgMTYgMjkuMzMzWiIgZmlsbD0iIzFFM0E4QSIvPgo8cGF0aCBkPSJNMTYgMjQuMzMzQzIwLjYwMjQgMjQuMzMzIDI0LjMzMzMgMjAuNjAyMiAyNC4zMzMzIDE2QzI0LjMzMzMgMTEuMzk3OCAyMC42MDI0IDcuNjY2NjcgMTYgNy42NjY2N0MxMS4zOTc2IDcuNjY2NjcgNy42NjY2MyAxMS4zOTc4IDcuNjY2NjMgMTZDNy42NjY2MyAyMC42MDIyIDExLjM5NzYgMjQuMzMzIDE2IDI0LjMzM1oiIGZpbGw9IiMzQjgyRjYiLz4KPHBhdGggZD0iTTE2IDIwQzE4LjIwOTEgMjAgMjAgMTguMjA5MSAyMCAxNkMyMCAxMy43OTA5IDE4LjIwOTEgMTIgMTYgMTJDMTMuNzkwOSAxMiAxMiAxMy43OTA5IDEyIDE2QzEyIDE4LjIwOTEgMTMuNzkwOSAyMCAxNiAyMFoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPg==" alt="EpiWatch Logo" style="height: 28px; vertical-align: middle; margin-right: 10px;">
+                <span>EpiWatch</span>
+            </div>
             <div class="nav-item active" onclick="showPage('dashboard', this)">📊 Dashboard</div>
             <div class="nav-item" onclick="showPage('map', this)">🌍 Live Map</div>
             <div class="nav-item" onclick="showPage('reports', this)">📝 Reports & Entry</div>
@@ -137,6 +250,7 @@
 
         <main class="main">
             <header class="header">
+                <button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('collapsed')">☰</button>
                 <h2 id="page-title">Surveillance Dashboard</h2>
                 <div style="font-size: 13px; color: #64748b;">User: <strong id="user-display">Admin</strong></div>
             </header>
@@ -268,6 +382,36 @@
     </div>
 
     <script>
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const sidebar = document.querySelector('.sidebar');
+            const menuToggle = document.querySelector('.menu-toggle');
+            
+            if (window.innerWidth <= 767 && 
+                !sidebar.contains(event.target) && 
+                !menuToggle.contains(event.target)) {
+                sidebar.classList.add('collapsed');
+            }
+        });
+        
+        // Close menu when a nav item is clicked on mobile
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                if (window.innerWidth <= 767) {
+                    document.querySelector('.sidebar').classList.add('collapsed');
+                }
+            });
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            const sidebar = document.querySelector('.sidebar');
+            if (window.innerWidth > 767) {
+                sidebar.classList.remove('collapsed');
+            } else if (!sidebar.classList.contains('collapsed')) {
+                sidebar.classList.add('collapsed');
+            }
+        });
         // --- 1. CONFIGURATION ---
         const locationCoords = {
             'Guadalupe': [10.3157, 123.8854],
