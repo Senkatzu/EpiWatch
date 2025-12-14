@@ -1,0 +1,220 @@
+@media (max-width: 900px) {
+    .stats-row {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-split {
+        grid-template-columns: 1fr;
+    }
+
+    .reports-layout {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+    }
+
+    .reports-layout .panel {
+        overflow: visible;
+    }
+
+    .page {
+        height: auto;
+        overflow: visible;
+    }
+
+    .dashboard-split {
+        flex: none;
+    }
+
+    .chart-wrapper {
+        min-height: 260px;
+    }
+
+    #dashboard .chart-wrapper {
+        height: 260px;
+    }
+
+    .chart-wrapper canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+}
+
+@media (max-width: 768px) {
+    #app-container {
+        position: relative;
+    }
+
+    .content-area {
+        padding: 16px;
+        padding-bottom: calc(90px + env(safe-area-inset-bottom));
+    }
+
+    .header {
+        padding: 0 12px;
+    }
+
+    .user-display,
+    #logout-btn {
+        display: none;
+    }
+
+    .mobile-profile-btn {
+        display: inline-flex;
+    }
+
+    .page-map {
+        height: calc(100vh - 60px - 90px - env(safe-area-inset-bottom));
+    }
+
+    #dashboard .chart-wrapper {
+        height: 240px;
+    }
+
+    .map-legend {
+        bottom: calc(90px + env(safe-area-inset-bottom));
+        right: 12px;
+    }
+
+    .mobile-bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: calc(74px + env(safe-area-inset-bottom));
+        padding: 0 8px env(safe-area-inset-bottom) 8px;
+        background: rgba(255,255,255,0.96);
+        backdrop-filter: blur(12px);
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 1006;
+    }
+
+    .mobile-tab {
+        border: none;
+        background: transparent;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        font-size: 11px;
+        color: #64748b;
+        cursor: pointer;
+        flex: 0 1 auto;
+        min-width: 0;
+        padding: 8px 0;
+    }
+
+    .mobile-tab-ico {
+        font-size: 20px;
+        line-height: 1;
+        margin: 0;
+    }
+
+    .mobile-drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 200ms ease;
+        z-index: 1007;
+    }
+
+    .mobile-drawer-backdrop.open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .mobile-drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        height: 100vh;
+        width: min(360px, 92vw);
+        background: #fff;
+        transform: translateX(100%);
+        transition: transform 240ms ease;
+        z-index: 1008;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .mobile-drawer.open {
+        transform: translateX(0);
+    }
+
+    .mobile-drawer-header {
+        padding: 14px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .mobile-drawer-title {
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .icon-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        cursor: pointer;
+        font-size: 20px;
+        line-height: 1;
+    }
+
+    .mobile-drawer-body {
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .profile-row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .profile-label {
+        font-size: 12px;
+        color: #64748b;
+        font-weight: 700;
+    }
+
+    .profile-value {
+        font-size: 14px;
+        color: #0f172a;
+        font-weight: 700;
+        word-break: break-word;
+    }
+
+    .profile-password {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .profile-pass {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #f8fafc;
+    }
+}
+
+@media (min-width: 769px) {
+    .mobile-drawer,
+    .mobile-drawer-backdrop {
+        display: none;
+    }
+}
