@@ -134,7 +134,7 @@
             transition: transform 0.3s ease;
         }
         .sidebar-toggle {
-            display: block;
+            display: none;
             position: absolute;
             top: 15px;
             right: 15px;
@@ -154,7 +154,13 @@
         }
 
 
-        .brand { padding: 20px; font-size: 20px; font-weight: bold; color: var(--secondary); border-bottom: 1px solid #334155; }
+        .brand { padding: 20px; font-size: 20px; font-weight: bold; color: var(--secondary); border-bottom: 1px solid #334155; display:flex; align-items:center; gap:10px; }
+
+
+        .brand-logo { width: 28px; height: 28px; object-fit: contain; flex: 0 0 auto; }
+
+
+        .brand-name { line-height: 1; }
 
 
         .nav-item { padding: 15px 20px; cursor: pointer; color: #94a3b8; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
@@ -184,7 +190,16 @@
         .main { flex: 1; display: flex; flex-direction: column; position: relative; height: 100%; }
 
 
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+
         .header { height: 60px; background: white; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
+
 
 
         .content-area { 
@@ -194,14 +209,16 @@
             padding: 20px; 
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 100px); /* Adjust based on header height */
+            min-height: 0;
         }
 
 
-        
+        .sidebar.active ~ .main .map-legend {
+            display: none;
+        }
 
 
-        /* PAGES */
+        /* --- PAGES --- */
 
 
         .page { 
@@ -210,6 +227,7 @@
             flex-direction: column; 
             gap: 20px;
             overflow: hidden;
+            min-height: 0;
         }
 
 
@@ -276,7 +294,13 @@
         .panel { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; overflow: hidden; }
 
 
-        .reports-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; height: 100%; }
+        .reports-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; height: 100%; min-height: 0; }
+
+
+        .reports-layout .panel { min-height: 0; }
+
+
+        .table-wrapper { flex: 1; overflow-y: auto; min-height: 0; }
 
 
         .panel-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: var(--primary); margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -309,9 +333,6 @@
         
 
 
-        .table-wrapper { flex: 1; overflow-y: auto; }
-
-
         .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
 
@@ -325,397 +346,150 @@
 
 
         .badge { padding: 4px 8px; border-radius: 20px; font-size: 11px; font-weight: bold; }
-
-
         .badge.critical { background: #fee2e2; color: #991b1b; }
-
-
         .badge.stable { background: #ffedd5; color: #9a3412; }
-
-
         .badge.recovered { background: #dcfce7; color: #166534; }
 
 
         .btn-edit { background: #e2e8f0; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .btn-delete { background: #fee2e2; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; color: #991b1b; }
 
 
-        /* Map Container Styles */
-        #map { 
-            height: 100%;
-            width: 100%;
-            min-height: 400px;
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
+        .toast-container {
+            position: fixed;
+            right: 16px;
+            bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 10000;
+            pointer-events: none;
         }
         
-        .map-container {
-            height: 100%;
-            width: 100%;
-            position: relative;
-            flex: 1;
-            min-height: 0; /* Fix for flex container */
+        .toast {
+            pointer-events: auto;
+            min-width: 260px;
+            max-width: min(360px, calc(100vw - 32px));
+            background: rgba(15, 23, 42, 0.92);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 12px 14px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+            transform: translateY(8px);
+            opacity: 0;
+            transition: opacity 180ms ease, transform 180ms ease;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
         }
         
-        .map-legend { 
-            position: absolute; 
-            bottom: 20px; 
-            right: 20px; 
-            background: white; 
-            padding: 10px 15px; 
-            border-radius: 8px; 
-            z-index: 1000; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2); 
-            font-size: 12px;
-            max-width: 200px;
-        }
+        .toast.show { opacity: 1; transform: translateY(0); }
         
-        .map-legend h4 {
-            margin: 0 0 8px 0;
-            color: var(--dark);
-            font-size: 13px;
-        }
-        
-        .legend-item {
+        .toast .toast-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
-            margin-bottom: 5px;
+            justify-content: center;
+            background: rgba(59,130,246,0.22);
+            flex: 0 0 auto;
+            font-size: 14px;
         }
         
-        .legend-item:last-child {
-            margin-bottom: 0;
-        }
+        .toast.success .toast-icon { background: rgba(16,185,129,0.22); }
+        .toast.error .toast-icon { background: rgba(220,38,38,0.22); }
+        .toast.warning .toast-icon { background: rgba(245,158,11,0.22); }
         
-        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .toast .toast-body { flex: 1; }
+        
+        .toast .toast-title { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+        
+        .toast .toast-msg { font-size: 12px; color: rgba(255,255,255,0.85); line-height: 1.35; }
 
 
-        /* --- RESPONSIVE STYLES --- */
-        /* Large touch devices (e.g., iPad in landscape) */
-        @media (min-width: 1025px) and (hover: none) and (pointer: coarse) {
-            .sidebar-toggle {
-                display: block;
-            }
-            .sidebar {
-                width: 70%;
-                transform: translateX(-100%);
-                position: fixed;
-                z-index: 1000;
-                height: 100%;
-                transition: transform 0.3s ease;
-            }
-            .sidebar.active {
-                transform: translateX(0);
-            }
-            .content-area {
-                width: 100%;
-                margin-left: 0;
-                padding: 15px;
-            }
-            .menu-toggle {
-                display: block;
-                position: fixed;
-                top: 15px;
-                left: 15px;
-                z-index: 1001;
-                background: none;
-                border: none;
-                font-size: 24px;
-                cursor: pointer;
-            }
-            .header {
-                padding-left: 50px;
-                height: auto;
-                min-height: 60px;
-            }
-            .header h2 {
-                font-size: 1.2rem;
-            }
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            z-index: 10001;
+        }
+        
+        .modal {
+            width: min(560px, 100%);
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+            overflow: hidden;
+            max-height: min(80vh, 680px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        
+        .modal-title {
+            font-weight: 800;
+            color: #0f172a;
+        }
+        
+        .modal-body {
+            padding: 14px 16px;
+            overflow: auto;
+        }
+        
+        .modal-actions {
+            padding: 12px 16px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            background: #f8fafc;
+        }
+        
+        .btn-primary {
+            background: var(--secondary);
+            color: #fff;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #0f172a;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        
+        .btn-danger {
+            background: #dc2626;
+            color: #fff;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 800;
         }
 
-        @media (min-width: 1025px) and (hover: none) and (pointer: coarse) and (orientation: landscape) {
-            .sidebar {
-                width: 60%;
-            }
-        }
 
-        /* Tablet (768px - 1024px) */
-        @media (max-width: 1024px) and (min-width: 769px) {
-            .stats-row {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .reports-layout {
-                grid-template-columns: 1fr;
-                gap: 15px;
-            }
-            
-            .dashboard-split {
-                grid-template-columns: 1fr;
-            }
-            
-            .card .val {
-                font-size: 24px;
-            }
-        }
-        
-        /* Small Tablets (600px - 768px) */
-        @media (max-width: 1024px) {
-            .sidebar-toggle {
-                display: block;
-            }
-            .close-sidebar { display: block; }
-            .sidebar {
-                width: 70%;
-                transform: translateX(-100%);
-                position: fixed;
-                z-index: 1000;
-                height: 100%;
-                transition: transform 0.3s ease;
-            }
-            
-            .sidebar.active {
-                transform: translateX(0);
-            }
-            
-            .content-area {
-                width: 100%;
-                margin-left: 0;
-                padding: 15px;
-            }
-            
-            .stats-row {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 15px;
-            }
-            
-            .card {
-                padding: 15px;
-            }
-            
-            .card .val {
-                font-size: 22px;
-            }
-            
-            .panel {
-                padding: 15px;
-            }
-            
-            .menu-toggle {
-                display: block;
-                position: fixed;
-                top: 15px;
-                left: 15px;
-                z-index: 1001;
-                background: none;
-                border: none;
-                font-size: 24px;
-                cursor: pointer;
-            }
-            
-            .header {
-                padding-left: 50px;
-                height: auto;
-                min-height: 60px;
-            }
-            
-            .header h2 {
-                font-size: 1.2rem;
-            }
-        }
-        
-        /* Mobile (425px - 600px) */
-        @media (max-width: 600px) and (min-width: 426px) {
-            .sidebar-toggle {
-                display: block;
-            }
-            .close-sidebar { display: block; }
-            .sidebar {
-                width: 80%;
-                transform: translateX(-100%);
-                position: fixed;
-                z-index: 1000;
-                height: 100%;
-                transition: transform 0.3s ease;
-            }
-            
-            .sidebar.active {
-                transform: translateX(0);
-            }
-            
-            .content-area {
-                width: 100%;
-                margin-left: 0;
-                padding: 12px;
-            }
-            
-            .stats-row {
-                grid-template-columns: 1fr;
-                gap: 12px;
-            }
-            
-            .card {
-                padding: 15px;
-            }
-            
-            .card .val {
-                font-size: 22px;
-            }
-            
-            .panel {
-                padding: 15px;
-            }
-            
-            .menu-toggle {
-                display: block;
-                position: fixed;
-                top: 12px;
-                left: 12px;
-                z-index: 1001;
-                background: none;
-                border: none;
-                font-size: 22px;
-                cursor: pointer;
-                padding: 5px;
-            }
-            
-            .header {
-                padding: 10px 10px 10px 50px;
-                height: auto;
-                min-height: 60px;
-            }
-            
-            .header h2 {
-                font-size: 1.1rem;
-            }
-            
-            .login-box {
-                width: 90%;
-                padding: 20px 15px;
-            }
-            
-            .data-table {
-                font-size: 12px;
-            }
-            
-            .data-table th,
-            .data-table td {
-                padding: 8px 6px;
-            }
-        }
-        
-        /* Small Mobile (320px - 425px) */
-        @media (max-width: 425px) {
-            .sidebar-toggle {
-                display: block;
-            }
-            .close-sidebar { display: block; }
-            .sidebar {
-                width: 85%;
-                transform: translateX(-100%);
-                position: fixed;
-                z-index: 1000;
-                height: 100%;
-                transition: transform 0.3s ease;
-            }
-            
-            .sidebar.active {
-                transform: translateX(0);
-            }
-            
-            .content-area {
-                width: 100%;
-                margin-left: 0;
-                padding: 10px;
-            }
-            
-            .header {
-                padding: 10px 10px 10px 45px;
-                height: auto;
-                min-height: 60px;
-            }
-            
-            .header h2 {
-                font-size: 1.1rem;
-            }
-            
-            .stats-row {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-            
-            .card {
-                padding: 12px;
-                border-radius: 8px;
-            }
-            
-            .card .val {
-                font-size: 20px;
-            }
-            
-            .card .label {
-                font-size: 12px;
-            }
-            
-            .panel {
-                padding: 12px;
-                border-radius: 8px;
-            }
-            
-            .data-table {
-                font-size: 11px;
-            }
-            
-            .data-table th,
-            .data-table td {
-                padding: 6px 4px;
-                font-size: 11px;
-            }
-            
-            .btn {
-                padding: 6px 12px;
-                font-size: 12px;
-            }
-            
-            .menu-toggle {
-                display: block;
-                position: fixed;
-                top: 10px;
-                left: 10px;
-                z-index: 1001;
-                background: none;
-                border: none;
-                font-size: 20px;
-                cursor: pointer;
-                padding: 5px;
-            }
-            
-            .login-box {
-                width: 95%;
-                padding: 20px 15px;
-            }
-            
-            .form-group {
-                margin-bottom: 12px;
-            }
-            
-            input[type="text"],
-            input[type="password"],
-            input[type="date"],
-            select {
-                padding: 8px 10px;
-                font-size: 14px;
-            }
-            
-            .nav-item {
-                padding: 12px 15px;
-                font-size: 14px;
-            }
-            
-            .brand {
-                padding: 15px;
-                font-size: 18px;
-            }
-        }
     </style>
 
 
@@ -731,7 +505,10 @@
         <div class="login-box">
 
 
-            <h2>🩺 EpiWatch</h2>
+            <h2 style="display:flex; align-items:center; justify-content:center; gap:10px;">
+                <img class="brand-logo" style="width:34px; height:34px;" src="epiwatch-logo.png" alt="EpiWatch" />
+                <span>EpiWatch</span>
+            </h2>
 
 
             <p>Secure Surveillance System</p>
@@ -786,7 +563,8 @@
 
 
             <div class="brand">
-                🩺 EpiWatch 
+                <img class="brand-logo" src="epiwatch-logo.png" alt="EpiWatch" />
+                <span class="brand-name">EpiWatch</span>
                 <button class="sidebar-toggle" onclick="event.stopPropagation(); document.querySelector('.sidebar').classList.toggle('active')">
                     ☰
                 </button>
@@ -799,7 +577,7 @@
             <div class="nav-item" onclick="showPage('map', this)">🌍 Live Map</div>
 
 
-            <div class="nav-item" onclick="showPage('reports', this)">📝 Reports & Entry</div>
+            <div class="nav-item" id="nav-reports" onclick="showPage('reports', this)">📝 Reports & Entry</div>
 
 
             
@@ -821,7 +599,10 @@
                 <h2 id="page-title">Surveillance Dashboard</h2>
 
 
-                <div style="font-size: 13px; color: #64748b;">User: <strong id="user-display">Admin</strong></div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="font-size: 13px; color: #64748b;">User: <strong id="user-display">Admin</strong></div>
+                    <button class="btn-mini" type="button" onclick="handleLogout()">🚪 Log Out</button>
+                </div>
 
 
             </header>
@@ -989,7 +770,7 @@
                     <div class="reports-layout">
 
 
-                        <div class="panel">
+                        <div class="panel" id="submit-panel">
 
 
                             <div class="panel-header">📝 Submit Report</div>
@@ -1028,34 +809,34 @@
                                     <label class="form-label">Location</label>
 
 
-                                    <select id="r-loc" class="form-select">
+                                    <select id="r-province" class="form-select" required>
 
 
-                                        <option value="Guadalupe">Guadalupe</option>
+                                        <option value="">Select Province</option>
 
 
-                                        <option value="Lahug">Lahug</option>
+                                    </select>
 
 
-                                        <option value="Mandaue">Mandaue Centro</option>
+                                    <div style="height:10px;"></div>
 
 
-                                        <option value="Labangon">Labangon</option>
+                                    <select id="r-muni" class="form-select" required disabled>
 
 
-                                        <option value="Tagbilaran City">Tagbilaran City</option>
+                                        <option value="">Select Municipality / City</option>
 
 
-                                        <option value="Dauis">Dauis</option>
+                                    </select>
 
 
-                                        <option value="Panglao">Panglao</option>
+                                    <div style="height:10px;"></div>
 
 
-                                        <option value="Tubigon">Tubigon</option>
+                                    <select id="r-brgy" class="form-select" required disabled>
 
 
-                                        <option value="Clarin">Clarin</option>
+                                        <option value="">Select Barangay</option>
 
 
                                     </select>
@@ -1202,12 +983,15 @@
 
 
 
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+
     <script>
         // Close mobile menu when clicking outside
         document.addEventListener('click', function(event) {
             const sidebar = document.querySelector('.sidebar');
             const menuToggle = document.querySelector('.menu-toggle');
-            
+            if(!sidebar || !menuToggle) return;
             if (window.innerWidth <= 768 && 
                 !sidebar.contains(event.target) && 
                 !menuToggle.contains(event.target)) {
@@ -1233,10 +1017,254 @@
         });
 
 
+        function setDateInputToToday(inputId) {
+            const el = document.getElementById(inputId);
+            if(!el) return;
+            const d = new Date();
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            el.value = `${yyyy}-${mm}-${dd}`;
+        }
+
+
+        function showToast(type, title, message, durationMs = 2200) {
+            const container = document.getElementById('toast-container');
+            if(!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type || ''}`.trim();
+
+            const icon = document.createElement('div');
+            icon.className = 'toast-icon';
+            icon.textContent = type === 'success' ? '✓' : (type === 'error' ? '!' : 'i');
+
+            const body = document.createElement('div');
+            body.className = 'toast-body';
+
+            const t = document.createElement('div');
+            t.className = 'toast-title';
+            t.textContent = title || '';
+
+            const m = document.createElement('div');
+            m.className = 'toast-msg';
+            m.textContent = message || '';
+
+            body.appendChild(t);
+            body.appendChild(m);
+            toast.appendChild(icon);
+            toast.appendChild(body);
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => toast.classList.add('show'));
+
+            window.setTimeout(() => {
+                toast.classList.remove('show');
+                window.setTimeout(() => { toast.remove(); }, 250);
+            }, durationMs);
+        }
+
+
+        let activeModalEl = null;
+
+
+        function closeModal() {
+            if(activeModalEl) {
+                activeModalEl.remove();
+                activeModalEl = null;
+            }
+        }
+
+
+        function showModal(title, bodyNode, actions) {
+            closeModal();
+
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop';
+
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+
+            const header = document.createElement('div');
+            header.className = 'modal-header';
+
+            const hTitle = document.createElement('div');
+            hTitle.className = 'modal-title';
+            hTitle.textContent = title || '';
+
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'btn-secondary';
+            closeBtn.type = 'button';
+            closeBtn.textContent = 'Close';
+            closeBtn.addEventListener('click', closeModal);
+
+            header.appendChild(hTitle);
+            header.appendChild(closeBtn);
+
+            const body = document.createElement('div');
+            body.className = 'modal-body';
+            if(bodyNode) body.appendChild(bodyNode);
+
+            const footer = document.createElement('div');
+            footer.className = 'modal-actions';
+            (actions || []).forEach(a => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = a.className || 'btn-secondary';
+                b.textContent = a.text || 'OK';
+                b.addEventListener('click', a.onClick || closeModal);
+                footer.appendChild(b);
+            });
+
+            modal.appendChild(header);
+            modal.appendChild(body);
+            modal.appendChild(footer);
+            backdrop.appendChild(modal);
+
+            backdrop.addEventListener('click', (e) => {
+                if(e.target === backdrop) closeModal();
+            });
+
+            document.body.appendChild(backdrop);
+            activeModalEl = backdrop;
+        }
+
+
+        function showConfirm(title, message, confirmText = 'Confirm', cancelText = 'Cancel', danger = false) {
+            return new Promise(resolve => {
+                const wrap = document.createElement('div');
+                wrap.style.display = 'grid';
+                wrap.style.gap = '10px';
+
+                const msg = document.createElement('div');
+                msg.style.color = '#334155';
+                msg.style.fontSize = '14px';
+                msg.textContent = message || '';
+                wrap.appendChild(msg);
+
+                showModal(title, wrap, [
+                    {
+                        text: cancelText,
+                        className: 'btn-secondary',
+                        onClick: () => { closeModal(); resolve(false); }
+                    },
+                    {
+                        text: confirmText,
+                        className: danger ? 'btn-danger' : 'btn-primary',
+                        onClick: () => { closeModal(); resolve(true); }
+                    }
+                ]);
+            });
+        }
+
+
         // --- 1. CONFIGURATION ---
 
 
-        const locationCoords = {
+        const PSGC_BASE_URL = 'https://psgc.gitlab.io/api';
+
+
+        let psgcProvinces = null;
+
+
+        const psgcMunicipalitiesByProvince = {};
+
+
+        const psgcBarangaysByLgu = {};
+
+
+        const geocodeCache = {};
+        
+
+
+        // --- 2. STATE ---
+
+
+        let reportList = JSON.parse(localStorage.getItem('epiReports_v4')) || []; 
+
+
+        let map;
+
+
+        let mapMarkers = [];
+
+
+        let mapMarkersByReportId = {};
+
+
+        let pendingFocusReportId = null;
+
+
+        let focusLatestOnNextMapOpen = false;
+
+
+        let focusMostRecentOnNextMapOpen = false;
+
+
+        let trendChart;
+
+
+        const SUPABASE_URL = 'https://sxfcohtvewuadrvnmeka.supabase.co';
+
+
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZmNvaHR2ZXd1YWRydm5tZWthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2OTMyMDUsImV4cCI6MjA4MTI2OTIwNX0.5bDoDWt8Yt58B78WcKvLLyzEMJzain68K1Rk77L9QgM';
+
+
+        let supabaseClient;
+
+
+        let supabaseRealtimeChannel;
+
+
+        let currentUserRole = 'admin';
+
+
+        let submitInFlight = false;
+
+
+        function getMostRecentReportId() {
+
+
+            if(!Array.isArray(reportList) || reportList.length === 0) return null;
+
+
+            let maxId = null;
+
+
+            reportList.forEach(r => {
+
+
+                const id = Number(r && r.id);
+
+
+                if(Number.isFinite(id) && (maxId === null || id > maxId)) maxId = id;
+
+
+            });
+
+
+            return maxId;
+
+
+        }
+
+
+        function applyRolePermissions() {
+
+
+            const isAdmin = currentUserRole === 'admin';
+
+
+            const submitPanel = document.getElementById('submit-panel');
+
+
+            if(submitPanel) submitPanel.style.display = isAdmin ? '' : 'none';
+
+
+        }
+
+
+        const LEGACY_LOCATION_COORDS = {
 
 
             'Guadalupe': [10.3157, 123.8854],
@@ -1269,150 +1297,291 @@
         };
 
 
+        function clearAndDisableSelect(el, placeholder) {
+            if(!el) return;
+            el.innerHTML = '';
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = placeholder;
+            el.appendChild(opt);
+            el.value = '';
+            el.disabled = true;
+        }
 
 
-
-        // --- 2. STATE ---
-
-
-        let reportList = JSON.parse(localStorage.getItem('epiReports_v4')) || []; 
-
-
-        let map;
-
-
-        let mapMarkers = [];
-
-
-        let mapMarkersByReportId = {};
-
-
-        let pendingFocusReportId = null;
-
-
-        let focusLatestOnNextMapOpen = false;
+        function populateSelect(el, items, placeholder) {
+            if(!el) return;
+            el.innerHTML = '';
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = placeholder;
+            el.appendChild(opt);
+            (items || []).forEach(item => {
+                const o = document.createElement('option');
+                o.value = item.code;
+                o.textContent = item.name;
+                if(item.kind) o.dataset.kind = item.kind;
+                el.appendChild(o);
+            });
+            el.disabled = false;
+        }
 
 
-        let trendChart;
+        async function fetchJson(url) {
+            const res = await fetch(url, { cache: 'force-cache' });
+            if(!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        }
 
 
-        const SUPABASE_URL = 'https://sxfcohtvewuadrvnmeka.supabase.co';
+        async function loadProvincesIfNeeded() {
+            if(psgcProvinces) return psgcProvinces;
+            psgcProvinces = await fetchJson(`${PSGC_BASE_URL}/provinces/`);
+            psgcProvinces.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            return psgcProvinces;
+        }
 
 
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZmNvaHR2ZXd1YWRydm5tZWthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2OTMyMDUsImV4cCI6MjA4MTI2OTIwNX0.5bDoDWt8Yt58B78WcKvLLyzEMJzain68K1Rk77L9QgM';
+        async function loadMunicipalitiesAndCitiesByProvince(provinceCode) {
+            if(!provinceCode) return [];
+            if(psgcMunicipalitiesByProvince[provinceCode]) return psgcMunicipalitiesByProvince[provinceCode];
+
+            const [municipalities, cities] = await Promise.all([
+                fetchJson(`${PSGC_BASE_URL}/provinces/${provinceCode}/municipalities/`).catch(() => []),
+                fetchJson(`${PSGC_BASE_URL}/provinces/${provinceCode}/cities/`).catch(() => [])
+            ]);
+
+            const combined = [];
+            (municipalities || []).forEach(m => combined.push({ code: m.code, name: m.name, kind: 'municipality' }));
+            (cities || []).forEach(c => combined.push({ code: c.code, name: c.name, kind: 'city' }));
+            combined.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            psgcMunicipalitiesByProvince[provinceCode] = combined;
+            return combined;
+        }
 
 
-        let supabaseClient;
+        async function loadBarangaysForLgu(lguCode, kind) {
+            if(!lguCode || !kind) return [];
+            const cacheKey = `${kind}:${lguCode}`;
+            if(psgcBarangaysByLgu[cacheKey]) return psgcBarangaysByLgu[cacheKey];
+
+            const endpoint = kind === 'city'
+                ? `${PSGC_BASE_URL}/cities/${lguCode}/barangays/`
+                : `${PSGC_BASE_URL}/municipalities/${lguCode}/barangays/`;
+
+            const barangays = await fetchJson(endpoint).catch(() => []);
+            const list = (barangays || []).map(b => ({ code: b.code, name: b.name }));
+            list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            psgcBarangaysByLgu[cacheKey] = list;
+            return list;
+        }
 
 
-        let supabaseRealtimeChannel;
+        function getSelectedOptionText(selectId) {
+            const el = document.getElementById(selectId);
+            if(!el) return '';
+            const opt = el.options[el.selectedIndex];
+            return opt ? (opt.textContent || '') : '';
+        }
+
+
+        function getSelectedOptionKind(selectId) {
+            const el = document.getElementById(selectId);
+            if(!el) return '';
+            const opt = el.options[el.selectedIndex];
+            return opt && opt.dataset ? (opt.dataset.kind || '') : '';
+        }
+
+
+        async function geocodeNominatim(query) {
+            if(!query) return null;
+            if(geocodeCache[query]) return geocodeCache[query];
+
+            const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if(!res.ok) return null;
+            const data = await res.json();
+            const first = Array.isArray(data) ? data[0] : null;
+            if(!first || !first.lat || !first.lon) return null;
+
+            const out = { lat: Number(first.lat), lng: Number(first.lon) };
+            geocodeCache[query] = out;
+            return out;
+        }
+
+
+        async function geocodeBarangayHall(provinceName, muniName, brgyName) {
+            const q1 = `${brgyName} Barangay Hall, ${muniName}, ${provinceName}, Philippines`;
+            const res1 = await geocodeNominatim(q1);
+            if(res1) return res1;
+
+            const q2 = `${brgyName}, ${muniName}, ${provinceName}, Philippines`;
+            const res2 = await geocodeNominatim(q2);
+            if(res2) return res2;
+
+            const q3 = `${muniName}, ${provinceName}, Philippines`;
+            return await geocodeNominatim(q3);
+        }
+
+
+        function seededUnitFromId(id, salt) {
+            const s = String(id ?? '') + '|' + String(salt ?? '');
+            let h = 2166136261;
+            for(let i = 0; i < s.length; i++) {
+                h ^= s.charCodeAt(i);
+                h = Math.imul(h, 16777619);
+            }
+            return ((h >>> 0) % 1000000) / 1000000;
+        }
+
+
+        function jitterLatLngWithinMeters(lat, lng, maxMeters, seed) {
+            const r = seededUnitFromId(seed, 'r');
+            const theta = seededUnitFromId(seed, 't') * Math.PI * 2;
+            const dist = Math.sqrt(r) * maxMeters;
+            const dLat = (dist * Math.cos(theta)) / 111320;
+            const dLng = (dist * Math.sin(theta)) / (111320 * Math.cos((lat * Math.PI) / 180));
+            return [lat + dLat, lng + dLng];
+        }
+
+
+        async function initAddressSelectors() {
+            const provinceEl = document.getElementById('r-province');
+            const muniEl = document.getElementById('r-muni');
+            const brgyEl = document.getElementById('r-brgy');
+            if(!provinceEl || !muniEl || !brgyEl) return;
+
+            if(!provinceEl.dataset.initialized) {
+                provinceEl.dataset.initialized = '1';
+
+                provinceEl.addEventListener('change', async () => {
+                    clearAndDisableSelect(muniEl, 'Select Municipality / City');
+                    clearAndDisableSelect(brgyEl, 'Select Barangay');
+
+                    if(!provinceEl.value) return;
+
+                    try {
+                        const lgus = await loadMunicipalitiesAndCitiesByProvince(provinceEl.value);
+                        populateSelect(muniEl, lgus, 'Select Municipality / City');
+                    } catch(e) {
+                        clearAndDisableSelect(muniEl, 'Select Municipality / City');
+                    }
+                });
+
+                muniEl.addEventListener('change', async () => {
+                    clearAndDisableSelect(brgyEl, 'Select Barangay');
+
+                    if(!muniEl.value) return;
+
+                    const kind = getSelectedOptionKind('r-muni');
+                    if(!kind) return;
+
+                    try {
+                        const brgys = await loadBarangaysForLgu(muniEl.value, kind);
+                        populateSelect(brgyEl, brgys, 'Select Barangay');
+                    } catch(e) {
+                        clearAndDisableSelect(brgyEl, 'Select Barangay');
+                    }
+                });
+            }
+
+            try {
+                const provinces = await loadProvincesIfNeeded();
+                populateSelect(provinceEl, provinces, 'Select Province');
+                clearAndDisableSelect(muniEl, 'Select Municipality / City');
+                clearAndDisableSelect(brgyEl, 'Select Barangay');
+            } catch(e) {
+                clearAndDisableSelect(provinceEl, 'Select Province');
+                clearAndDisableSelect(muniEl, 'Select Municipality / City');
+                clearAndDisableSelect(brgyEl, 'Select Barangay');
+            }
+        }
 
 
         async function initSupabaseSync() {
-
-
             if(typeof window.supabase === 'undefined') return;
 
-
             if(!supabaseClient) {
-
-
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-
                 supabaseRealtimeChannel = supabaseClient
-
-
                     .channel('reports-realtime')
-
-
                     .on(
-
-
-                        'postgres_changes',
-
-
+                        'postgres_changes', 
                         { event: '*', schema: 'public', table: 'reports' },
-
-
                         () => { loadReportsFromSupabase(); }
-
-
                     )
-
-
                     .subscribe();
-
-
             }
 
-
             await loadReportsFromSupabase();
-
-
         }
 
 
         async function loadReportsFromSupabase() {
-
-
             if(!supabaseClient) return;
 
-
             const { data, error } = await supabaseClient
-
-
                 .from('reports')
-
-
                 .select('*')
-
-
                 .order('created_at', { ascending: false });
 
-
             if(error) {
-
-
                 console.error('Supabase load error:', error);
-
-
                 return;
-
-
             }
 
+            const existing = Array.isArray(reportList) ? reportList : [];
+            const mergedById = new Map();
+            existing.forEach(r => {
+                const id = Number(r && r.id);
+                if(Number.isFinite(id)) mergedById.set(id, r);
+            });
 
-            reportList = (data || []).map(row => ({
-
-
+            const supabaseReports = (data || []).map(row => ({
                 id: typeof row.id === 'string' ? Number(row.id) : row.id,
-
-
                 date: row.date,
-
-
                 name: row.name,
-
-
                 loc: row.loc,
-
-
+                province: row.province || null,
+                municipality: row.municipality || null,
+                barangay: row.barangay || null,
+                lat: typeof row.lat === 'number' ? row.lat : (row.lat ? Number(row.lat) : null),
+                lng: typeof row.lng === 'number' ? row.lng : (row.lng ? Number(row.lng) : null),
                 diag: row.diag,
-
-
                 status: row.status
-
-
             }));
 
+            supabaseReports.forEach(r => {
+                const id = Number(r && r.id);
+                if(Number.isFinite(id)) mergedById.set(id, r);
+            });
+
+            reportList = Array.from(mergedById.values()).sort((a, b) => {
+                const ai = Number(a && a.id);
+                const bi = Number(b && b.id);
+                return (Number.isFinite(bi) ? bi : 0) - (Number.isFinite(ai) ? ai : 0);
+            });
 
             saveData();
 
-
             refreshUI();
 
+            if(focusMostRecentOnNextMapOpen) {
+                const mapPage = document.getElementById('map');
 
+                if(mapPage && mapPage.classList.contains('active')) {
+                    const mostRecentId = getMostRecentReportId();
+
+                    if(mostRecentId) {
+                        updateMapMarkers();
+
+                        const focusedMostRecent = focusReportOnMap(mostRecentId);
+
+                        if(focusedMostRecent) focusMostRecentOnNextMapOpen = false;
+                    }
+                }
+            }
         }
 
 
@@ -1420,174 +1589,102 @@
 
 
         function handleLogin(e) {
-
-
             e.preventDefault();
-
 
             const u = document.getElementById('login-user').value;
 
-
             const p = document.getElementById('login-pass').value;
 
+            let role = null;
 
+            if (u === 'maui wowie' && p === 'honolulu123') role = 'admin';
 
+            else if (u === 'viewer' && p === 'viewer123') role = 'viewer';
 
-
-            // Simple Hardcoded Credential Check
-
-
-            if (u === 'maui wowie' && p === 'honolulu123') {
-
+            if (role) {
+                currentUserRole = role;
 
                 document.getElementById('login-screen').style.display = 'none';
 
-
                 document.getElementById('app-container').style.display = 'flex';
-
 
                 document.getElementById('user-display').innerText = u;
 
+                applyRolePermissions();
 
-                
-
+                focusMostRecentOnNextMapOpen = true;
 
                 // Initialize App
 
-
                 initApp();
-
-
             } else {
-
-
                 const err = document.getElementById('login-error');
-
 
                 err.style.display = 'block';
 
-
                 err.innerText = "❌ Incorrect Username or Password";
-
-
             }
-
-
         }
-
-
-
 
 
         function handleLogout() {
+            showConfirm('Log out', 'Are you sure you want to log out?', 'Log out', 'Cancel', true)
+                .then(ok => {
+                    if(!ok) return;
 
+                    document.getElementById('app-container').style.display = 'none';
 
-            if(confirm("Are you sure you want to log out?")) {
+                    document.getElementById('login-screen').style.display = 'flex';
 
+                    document.getElementById('login-user').value = '';
 
-                document.getElementById('app-container').style.display = 'none';
+                    document.getElementById('login-pass').value = '';
 
-
-                document.getElementById('login-screen').style.display = 'flex';
-
-
-                document.getElementById('login-user').value = '';
-
-
-                document.getElementById('login-pass').value = '';
-
-
-                document.getElementById('login-error').style.display = 'none';
-
-
-            }
-
-
+                    document.getElementById('login-error').style.display = 'none';
+                });
         }
-
-
-
 
 
         // --- 4. APP INITIALIZATION ---
 
 
         function initApp() {
-
-
-            document.getElementById('r-date').valueAsDate = new Date();
-
+            setDateInputToToday('r-date');
 
             // Need to resize map because it was hidden
 
-
             setTimeout(() => {
-
-
                 if(!map) initMap();
-
 
                 else map.invalidateSize();
 
-
                 refreshUI();
-
 
                 initSupabaseSync();
 
+                initAddressSelectors();
 
+                applyRolePermissions();
             }, 100);
-
-
         }
-
-
-
 
 
         // --- 5. NAVIGATION ---
 
 
         function showPage(pageId, btn) {
-
-
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-
-
             document.querySelectorAll('.nav-item').forEach(n => {
-
-
                 if(!n.classList.contains('logout')) n.classList.remove('active');
-
-
             });
-
-
-            
-
-
             document.getElementById(pageId).classList.add('active');
-
-
-            
-
-
             if(btn) btn.classList.add('active');
-
-
             else if(pageId === 'map') document.querySelectorAll('.nav-item')[1].classList.add('active');
-
-
-
-
-
             if(pageId === 'map') {
                 setTimeout(() => {
                     if(!map) initMap();
                     else map.invalidateSize();
-
                     updateMapMarkers();
-
                     if(focusLatestOnNextMapOpen && pendingFocusReportId) {
                         const focused = focusReportOnMap(pendingFocusReportId);
                         if(focused) {
@@ -1595,521 +1692,479 @@
                             pendingFocusReportId = null;
                         }
                     }
+                    if(focusMostRecentOnNextMapOpen && !pendingFocusReportId) {
+                        const mostRecentId = getMostRecentReportId();
+                        if(mostRecentId) {
+                            const focusedMostRecent = focusReportOnMap(mostRecentId);
+                            if(focusedMostRecent) focusMostRecentOnNextMapOpen = false;
+                        }
+                    }
                 }, 120);
             }
-
-
         }
-
-
-
-
-
-        // --- 6. CORE LOGIC (Map, Data, Charts) ---
 
 
         function initMap() {
-
-
-            map = L.map('map-container').setView([10.0000, 124.0000], 10); // Center slightly to show Cebu & Bohol
-
-
+            map = L.map('map-container').setView([10.0000, 124.0000], 10);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-
         }
-
-
-
 
 
         function refreshUI() {
-
-
             renderTable();
-
-
             updateDashboard();
-
-
             updateMapMarkers();
-
-
         }
-
-
-
 
 
         function updateMapMarkers() {
-
-
             if(!map) return;
-
-
             mapMarkers.forEach(marker => map.removeLayer(marker));
-
-
             mapMarkers = [];
-
-
             mapMarkersByReportId = {};
-
-
             reportList.forEach(report => {
 
+                const baseLat = typeof report.lat === 'number' ? report.lat : (report.lat ? Number(report.lat) : null);
+                const baseLng = typeof report.lng === 'number' ? report.lng : (report.lng ? Number(report.lng) : null);
 
-                const coords = locationCoords[report.loc];
+                let lat = baseLat;
+                let lng = baseLng;
 
-
-                if(coords) {
-
-
-                    let color = 'green';
-
-
-                    let radius = 100;
-
-
-                    const lat = coords[0] + (Math.random() - 0.5) * 0.005;
-
-
-                    const lng = coords[1] + (Math.random() - 0.5) * 0.005;
-
-
-
-
-
-                    if(report.status === 'Critical') { color = 'red'; radius = 200; }
-
-
-                    else if (report.status === 'Stable') { color = 'orange'; radius = 150; }
-
-
-
-
-
-                    const circle = L.circle([lat, lng], {
-
-
-                        color: color, fillColor: color, fillOpacity: 0.5, radius: radius
-
-
-                    }).addTo(map);
-
-
-                    
-
-
-                    circle.bindPopup(`<b>${report.name}</b><br>Status: ${report.status}<br>Loc: ${report.loc}`);
-
-
-                    mapMarkers.push(circle);
-
-
-                    mapMarkersByReportId[report.id] = circle;
-
-
+                if(!Number.isFinite(lat) || !Number.isFinite(lng)) {
+                    const legacy = LEGACY_LOCATION_COORDS[report.loc];
+                    if(!legacy) return;
+                    lat = legacy[0];
+                    lng = legacy[1];
                 }
 
+                const jittered = jitterLatLngWithinMeters(lat, lng, 1000, report.id);
+                lat = jittered[0];
+                lng = jittered[1];
 
+                let color = 'green';
+                if(report.status === 'Critical') color = 'red';
+                else if(report.status === 'Stable') color = 'orange';
+
+                const halo = L.circle([lat, lng], {
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.12,
+                    radius: 500,
+                    weight: 1,
+                    opacity: 0.55
+                }).addTo(map);
+
+                const dot = L.circleMarker([lat, lng], {
+                    radius: 7,
+                    color: '#ffffff',
+                    weight: 2,
+                    fillColor: color,
+                    fillOpacity: 1
+                }).addTo(map);
+
+                const locText = report.province && report.municipality && report.barangay
+                    ? `${report.province} - ${report.municipality} - ${report.barangay}`
+                    : (report.loc || 'Unknown');
+
+                dot.bindPopup(`<b>${report.name}</b><br>Diagnosis: ${report.diag || ''}<br>Status: ${report.status}<br>Loc: ${locText}`);
+                mapMarkers.push(halo);
+                mapMarkers.push(dot);
+                mapMarkersByReportId[report.id] = dot;
             });
-
-
         }
-
-
-
 
 
         function focusReportOnMap(reportId) {
-
-
             if(!map || !reportId) return false;
-
-
             const layer = mapMarkersByReportId[reportId];
-
-
             if(!layer || !layer.getLatLng) return false;
-
-
             const latlng = layer.getLatLng();
-
-
             if(!latlng) return false;
-
-
             const targetZoom = Math.max(map.getZoom(), 13);
-
-
             map.setView(latlng, targetZoom, { animate: true });
-
-
             if(layer.openPopup) layer.openPopup();
-
-
             return true;
-
-
         }
-
-
-
 
 
         async function submitReport(e) {
-
-
             e.preventDefault();
-
-
-            const newReport = {
-
-
-                id: Date.now(),
-
-
-                date: document.getElementById('r-date').value,
-
-
-                name: document.getElementById('r-name').value,
-
-
-                loc: document.getElementById('r-loc').value,
-
-
-                diag: document.getElementById('r-diag').value,
-
-
-                status: document.getElementById('r-status').value
-
-
-            };
-
-
-            reportList.unshift(newReport);
-
-
-            pendingFocusReportId = newReport.id;
-
-
-            focusLatestOnNextMapOpen = true;
-
-
-            if(supabaseClient) {
-
-
-                const { error } = await supabaseClient.from('reports').insert({
-
-
-                    id: newReport.id,
-
-
-                    date: newReport.date,
-
-
-                    name: newReport.name,
-
-
-                    loc: newReport.loc,
-
-
-                    diag: newReport.diag,
-
-
-                    status: newReport.status
-
-
-                });
-
-
-                if(error) {
-
-
-                    console.error('Supabase insert error:', error);
-
-
-                    alert('Failed to sync record. Check Supabase table/policies.');
-
-
-                    saveData();
-
-
-                    refreshUI();
-
-
-                } else {
-
-
-                    await loadReportsFromSupabase();
-
-
-                }
-
-
-            } else {
-
-
-                saveData();
-
-
-                refreshUI();
-
-
+            if(currentUserRole !== 'admin') {
+                showToast('warning', 'View only', 'This account is view-only and cannot add new entries.');
+                return;
             }
 
+            if(submitInFlight) return;
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const prevBtnText = submitBtn ? submitBtn.textContent : '';
+            submitInFlight = true;
+            if(submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Saving...';
+            }
 
-            e.target.reset();
+            try {
+                const provinceCode = document.getElementById('r-province').value;
+                const muniCode = document.getElementById('r-muni').value;
+                const brgyCode = document.getElementById('r-brgy').value;
 
+                const provinceName = getSelectedOptionText('r-province');
+                const muniName = getSelectedOptionText('r-muni');
+                const brgyName = getSelectedOptionText('r-brgy');
 
-            document.getElementById('r-date').valueAsDate = new Date();
+                if(!provinceCode || !muniCode || !brgyCode) {
+                    showToast('warning', 'Missing location', 'Please select Province, Municipality/City, and Barangay.');
+                    return;
+                }
 
+                const nameVal = (document.getElementById('r-name').value || '').trim();
+                const dateVal = (document.getElementById('r-date').value || '').trim();
+                const now = Date.now();
+                const dupe = reportList.find(r => {
+                    if(!r) return false;
+                    const sameName = String(r.name || '').trim().toLowerCase() === nameVal.toLowerCase();
+                    const sameDate = String(r.date || '').trim() === dateVal;
+                    const sameLoc = String(r.barangay || '').trim().toLowerCase() === String(brgyName || '').trim().toLowerCase();
+                    const recent = Number.isFinite(Number(r.id)) ? (now - Number(r.id) < 120000) : false;
+                    return sameName && sameDate && sameLoc && recent;
+                });
+                if(dupe) {
+                    showToast('warning', 'Duplicate blocked', 'This looks like a duplicate submission. Please wait.');
+                    return;
+                }
 
-            alert("Record Saved!");
+                const geo = await geocodeBarangayHall(provinceName, muniName, brgyName);
+                if(!geo || !Number.isFinite(geo.lat) || !Number.isFinite(geo.lng)) {
+                    showToast('error', 'Location failed', 'Could not locate the selected barangay hall on the map.');
+                    return;
+                }
 
-
+                const newReport = {
+                    id: Date.now(),
+                    date: document.getElementById('r-date').value,
+                    name: nameVal,
+                    loc: `${provinceName} - ${muniName} - ${brgyName}`,
+                    province: provinceName,
+                    municipality: muniName,
+                    barangay: brgyName,
+                    lat: geo.lat,
+                    lng: geo.lng,
+                    diag: document.getElementById('r-diag').value,
+                    status: document.getElementById('r-status').value
+                };
+                reportList.unshift(newReport);
+                pendingFocusReportId = newReport.id;
+                focusLatestOnNextMapOpen = true;
+                if(supabaseClient) {
+                    const { error } = await supabaseClient.from('reports').insert({
+                        id: newReport.id,
+                        date: newReport.date,
+                        name: newReport.name,
+                        loc: newReport.loc,
+                        province: newReport.province,
+                        municipality: newReport.municipality,
+                        barangay: newReport.barangay,
+                        lat: newReport.lat,
+                        lng: newReport.lng,
+                        diag: newReport.diag,
+                        status: newReport.status
+                    });
+                    if(error) {
+                        console.error('Supabase insert error:', error);
+                        showToast('error', 'Sync failed', 'Record saved locally but failed to sync.');
+                        saveData();
+                        refreshUI();
+                    } else {
+                        await loadReportsFromSupabase();
+                    }
+                } else {
+                    saveData();
+                    refreshUI();
+                }
+                e.target.reset();
+                setDateInputToToday('r-date');
+                clearAndDisableSelect(document.getElementById('r-muni'), 'Select Municipality / City');
+                clearAndDisableSelect(document.getElementById('r-brgy'), 'Select Barangay');
+                showToast('success', 'Saved', 'Record saved successfully.');
+            } catch(err) {
+                console.error('submitReport error:', err);
+                showToast('error', 'Save failed', 'Something went wrong while saving. Please try again.');
+            } finally {
+                if(submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = prevBtnText;
+                }
+                submitInFlight = false;
+            }
         }
-
-
-
 
 
         async function editStatus(id) {
-
-
-            const index = reportList.findIndex(r => r.id === id);
-
-
-            if(index === -1) return;
-
-
-            const newStatus = prompt("Update Status (Critical, Stable, Recovered):", reportList[index].status);
-
-
-            if(newStatus) {
-
-
-                const s = newStatus.charAt(0).toUpperCase() + newStatus.slice(1).toLowerCase();
-
-
-                if(['Critical', 'Stable', 'Recovered'].includes(s)) {
-
-
-                    if(supabaseClient) {
-
-
-                        const { error } = await supabaseClient
-
-
-                            .from('reports')
-
-
-                            .update({ status: s })
-
-
-                            .eq('id', id);
-
-
-                        if(error) {
-
-
-                            console.error('Supabase update error:', error);
-
-
-                            alert('Failed to sync status update.');
-
-
-                        } else {
-
-
-                            await loadReportsFromSupabase();
-
-
-                            return;
-
-
-                        }
-
-
-                    }
-
-
-                    reportList[index].status = s;
-
-
-                    saveData();
-
-
-                    refreshUI();
-
-
-                }
-
-
-            }
-
-
+            openEditReport(id);
         }
 
 
+        function openEditReport(id) {
+            if(currentUserRole !== 'admin') {
+                showToast('warning', 'View only', 'This account is view-only and cannot edit records.');
+                return;
+            }
 
+            const report = reportList.find(r => r && r.id === id);
+            if(!report) return;
+
+            const form = document.createElement('div');
+            form.style.display = 'grid';
+            form.style.gap = '12px';
+
+            const mkGroup = (labelText, inputEl) => {
+                const g = document.createElement('div');
+                g.className = 'form-group';
+                g.style.marginBottom = '0';
+                const l = document.createElement('label');
+                l.className = 'form-label';
+                l.textContent = labelText;
+                g.appendChild(l);
+                g.appendChild(inputEl);
+                return g;
+            };
+
+            const dateEl = document.createElement('input');
+            dateEl.type = 'date';
+            dateEl.className = 'form-input';
+            dateEl.value = report.date || '';
+
+            const nameEl = document.createElement('input');
+            nameEl.type = 'text';
+            nameEl.className = 'form-input';
+            nameEl.value = report.name || '';
+
+            const provEl = document.createElement('input');
+            provEl.type = 'text';
+            provEl.className = 'form-input';
+            provEl.value = report.province || '';
+
+            const muniEl = document.createElement('input');
+            muniEl.type = 'text';
+            muniEl.className = 'form-input';
+            muniEl.value = report.municipality || '';
+
+            const brgyEl = document.createElement('input');
+            brgyEl.type = 'text';
+            brgyEl.className = 'form-input';
+            brgyEl.value = report.barangay || '';
+
+            const diagEl = document.createElement('select');
+            diagEl.className = 'form-select';
+            ['Dengue', 'Cholera', 'Typhoid', 'Influenza', 'High Flu'].forEach(v => {
+                const o = document.createElement('option');
+                o.value = v === 'High Flu' ? 'COVID-19' : v;
+                o.textContent = v;
+                diagEl.appendChild(o);
+            });
+            diagEl.value = report.diag || 'Dengue';
+
+            const statusEl = document.createElement('select');
+            statusEl.className = 'form-select';
+            ['Critical', 'Stable', 'Recovered'].forEach(v => {
+                const o = document.createElement('option');
+                o.value = v;
+                o.textContent = v;
+                statusEl.appendChild(o);
+            });
+            statusEl.value = report.status || 'Stable';
+
+            form.appendChild(mkGroup('Date', dateEl));
+            form.appendChild(mkGroup('Patient Name', nameEl));
+            form.appendChild(mkGroup('Province', provEl));
+            form.appendChild(mkGroup('Municipality / City', muniEl));
+            form.appendChild(mkGroup('Barangay', brgyEl));
+            form.appendChild(mkGroup('Diagnosis', diagEl));
+            form.appendChild(mkGroup('Status', statusEl));
+
+            const save = async () => {
+                const next = { ...report };
+                next.date = (dateEl.value || '').trim();
+                next.name = (nameEl.value || '').trim();
+                next.province = (provEl.value || '').trim() || null;
+                next.municipality = (muniEl.value || '').trim() || null;
+                next.barangay = (brgyEl.value || '').trim() || null;
+                next.diag = diagEl.value;
+                next.status = statusEl.value;
+
+                const hasFullLoc = next.province && next.municipality && next.barangay;
+                if(hasFullLoc) {
+                    next.loc = `${next.province} - ${next.municipality} - ${next.barangay}`;
+                }
+
+                if(hasFullLoc) {
+                    const geo = await geocodeBarangayHall(next.province, next.municipality, next.barangay);
+                    if(geo && Number.isFinite(geo.lat) && Number.isFinite(geo.lng)) {
+                        next.lat = geo.lat;
+                        next.lng = geo.lng;
+                    } else {
+                        showToast('warning', 'Geocode skipped', 'Could not geocode updated location. Keeping previous coordinates.');
+                    }
+                }
+
+                const idx = reportList.findIndex(r => r && r.id === id);
+                if(idx >= 0) reportList[idx] = next;
+                saveData();
+                refreshUI();
+
+                if(supabaseClient) {
+                    const { error } = await supabaseClient
+                        .from('reports')
+                        .update({
+                            date: next.date,
+                            name: next.name,
+                            loc: next.loc,
+                            province: next.province,
+                            municipality: next.municipality,
+                            barangay: next.barangay,
+                            lat: next.lat,
+                            lng: next.lng,
+                            diag: next.diag,
+                            status: next.status
+                        })
+                        .eq('id', id);
+                    if(error) {
+                        console.error('Supabase update error:', error);
+                        showToast('error', 'Sync failed', 'Update saved locally but failed to sync.');
+                    } else {
+                        await loadReportsFromSupabase();
+                    }
+                }
+
+                showToast('success', 'Updated', 'Record updated successfully.');
+                closeModal();
+            };
+
+            showModal('Edit Record', form, [
+                { text: 'Cancel', className: 'btn-secondary', onClick: closeModal },
+                { text: 'Save Changes', className: 'btn-primary', onClick: save }
+            ]);
+        }
+
+
+        async function deleteReport(id) {
+            if(currentUserRole !== 'admin') {
+                showToast('warning', 'View only', 'This account is view-only and cannot delete records.');
+                return;
+            }
+
+            const report = reportList.find(r => r && r.id === id);
+            if(!report) return;
+
+            const ok = await showConfirm('Delete record', `Delete record for ${report.name || 'this patient'}?`, 'Delete', 'Cancel', true);
+            if(!ok) return;
+
+            reportList = reportList.filter(r => r && r.id !== id);
+            saveData();
+            refreshUI();
+
+            if(supabaseClient) {
+                const { error } = await supabaseClient
+                    .from('reports')
+                    .delete()
+                    .eq('id', id);
+                if(error) {
+                    console.error('Supabase delete error:', error);
+                    showToast('error', 'Sync failed', 'Delete applied locally but failed to sync.');
+                } else {
+                    await loadReportsFromSupabase();
+                }
+            }
+
+            showToast('success', 'Deleted', 'Record deleted successfully.');
+        }
 
 
         function saveData() {
-
-
             localStorage.setItem('epiReports_v4', JSON.stringify(reportList));
-
-
         }
-
 
 
         // --- 7. EXPORT & VISUALS ---
 
 
         function downloadChartImage() {
-
-
             const canvas = document.getElementById('trendChart');
-
 
             const link = document.createElement('a');
 
-
             link.download = 'Monthly_Trend_Chart.png';
-
 
             link.href = canvas.toDataURL('image/png');
 
-
             link.click();
-
-
         }
-
-
-
 
 
         function downloadCSV() {
-
-
-            if(reportList.length === 0) { alert("No data to export!"); return; }
-
+            if(reportList.length === 0) { showToast('warning', 'No data', 'No data to export.'); return; }
 
             let csvContent = "data:text/csv;charset=utf-8,Date,Name,Location,Diagnosis,Status\n";
 
-
             reportList.forEach(row => {
-
-
                 csvContent += `${row.date},${row.name},${row.loc},${row.diag},${row.status}\n`;
-
-
             });
-
 
             const encodedUri = encodeURI(csvContent);
 
-
             const link = document.createElement("a");
-
 
             link.setAttribute("href", encodedUri);
 
-
             link.setAttribute("download", "EpiWatch_Data_Report.csv");
-
 
             document.body.appendChild(link);
 
-
             link.click();
-
-
         }
-
-
-
 
 
         function updateDashboard() {
-
-
             const activeCases = reportList.filter(r => r.status !== 'Recovered').length;
-
 
             document.getElementById('disp-active').innerText = activeCases;
 
-
             document.getElementById('disp-total').innerText = reportList.length;
-
-
-
-
 
             const criticalReports = reportList.filter(r => r.status === 'Critical');
 
-
             const criticalLocs = [...new Set(criticalReports.map(r => r.loc))]; 
-
 
             const zoneListEl = document.getElementById('zone-list');
 
-
-            
-
-
             if (criticalLocs.length > 0) {
-
-
                 zoneListEl.innerText = criticalLocs.join(', ');
-
-
                 zoneListEl.style.color = "#b91c1c";
-
-
             } else {
-
-
                 zoneListEl.innerText = "No Critical Zones";
-
-
                 zoneListEl.style.color = "#166534";
-
-
             }
 
-
             updateChart();
-
-
         }
 
 
-
-
-
         function renderTable() {
-
-
             const tbody = document.getElementById('report-table-body');
-
 
             tbody.innerHTML = '';
 
-
             reportList.forEach(item => {
-
-
                 const badgeClass = item.status === 'Critical' ? 'critical' : (item.status === 'Stable' ? 'stable' : 'recovered');
 
+                const actionCell = currentUserRole === 'admin'
+                    ? `
+                        <button class="btn-edit" onclick="openEditReport(${item.id})">Edit</button>
+                        <button class="btn-delete" onclick="deleteReport(${item.id})">Delete</button>
+                      `
+                    : `—`;
 
                 tbody.innerHTML += `
-
-
                     <tr>
 
 
@@ -2125,7 +2180,7 @@
                         <td><span class="badge ${badgeClass}">${item.status}</span></td>
 
 
-                        <td><button class="btn-edit" onclick="editStatus(${item.id})">✏️ Edit</button></td>
+                        <td>${actionCell}</td>
 
 
                     </tr>
