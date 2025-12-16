@@ -309,7 +309,8 @@
     }
 
     async function geocodeBarangayHall(provinceName, muniName, brgyName) {
-        const q = `Barangay Hall, ${brgyName}, ${muniName}, ${provinceName}, Philippines`;
+    // Remove 'Barangay Hall,' so we only search the barangay.
+    const q = `${brgyName}, ${muniName}, ${provinceName}, Philippines`;
         const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
         try {
             const data = await fetchJson(url);
@@ -1129,3 +1130,4 @@
         updateProfileUI();
     });
 })();
+
