@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/mobile.css">
 
+    <script src="js/config.js"></script>
     <script src="js/app.js" defer></script>
     <script src="js/mobile.js" defer></script>
 </head>
@@ -37,7 +38,12 @@
                     <label class="form-label">Password</label>
                     <input type="password" id="login-pass" class="form-input" placeholder="password" required>
                 </div>
-                <button type="submit" class="btn-submit">Secure Login</button>
+                <button type="submit" class="btn-submit" id="login-submit-btn">
+                    <span id="login-btn-text">Secure Login</span>
+                    <span id="login-loading" class="login-loading" style="display: none;">
+                        <span class="loading-spinner-small"></span> Logging in...
+                    </span>
+                </button>
             </form>
 
             <div id="login-error" class="login-error">Invalid credentials</div>
@@ -45,9 +51,54 @@
     </div>
 
     <div id="app-container">
+        <!-- Desktop Sidebar -->
+        <aside class="desktop-sidebar" id="desktop-sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <img class="brand-logo" src="epiwatch-logo.png" alt="EpiWatch" />
+                    <div class="sidebar-brand-name">EpiWatch</div>
+                </div>
+                <button class="sidebar-close-btn" id="sidebar-close-btn" type="button" aria-label="Close sidebar">×</button>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item desktop-nav-item active" data-page="dashboard" type="button">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Dashboard</span>
+                </button>
+                <button class="nav-item desktop-nav-item" data-page="map" type="button">
+                    <span class="nav-icon">🌍</span>
+                    <span class="nav-label">Live Map</span>
+                </button>
+                <button class="nav-item desktop-nav-item" data-page="reports" type="button">
+                    <span class="nav-icon">📝</span>
+                    <span class="nav-label">Submit Report</span>
+                </button>
+                <button class="nav-item desktop-nav-item" data-page="informations" type="button">
+                    <span class="nav-icon">ℹ️</span>
+                    <span class="nav-label">Case Information</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name" id="sidebar-user-display">—</div>
+                    <div class="sidebar-user-role" id="sidebar-user-role">—</div>
+                </div>
+                <button class="nav-item desktop-nav-item logout" id="desktop-logout-btn" type="button" onclick="handleLogout()">
+                    <span class="nav-icon">🚪</span>
+                    <span class="nav-label">Log Out</span>
+                </button>
+            </div>
+        </aside>
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
         <main class="main">
             <header class="header">
                 <div class="header-left">
+                    <button class="hamburger-btn" id="hamburger-btn" type="button" aria-label="Toggle sidebar">
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                        <span class="hamburger-line"></span>
+                    </button>
                     <div class="header-brand">
                         <img class="brand-logo" src="epiwatch-logo.png" alt="EpiWatch" />
                         <div class="header-brand-text">
@@ -100,7 +151,13 @@
                                     <button class="btn-mini" onclick="downloadCSV()">Export CSV</button>
                                 </div>
                             </div>
-                            <div class="chart-wrapper"><canvas id="trendChart"></canvas></div>
+                            <div class="chart-wrapper">
+                                <div class="loading-overlay" id="chart-loading" style="display: none;">
+                                    <div class="loading-spinner"></div>
+                                    <div class="loading-text">Loading chart...</div>
+                                </div>
+                                <canvas id="trendChart"></canvas>
+                            </div>
                         </div>
 
                         <!-- System Logs moved to Informations page -->
@@ -126,8 +183,35 @@
                         </div>
 
                         <div class="panel">
-                            <div class="panel-header">Case Database</div>
-                            <div class="table-wrapper">
+                            <div class="panel-header">
+                                <span>Case Database</span>
+                                <div id="table-result-count" class="table-result-count"></div>
+                            </div>
+                            <div class="table-filters">
+                                <input type="text" id="table-search" class="table-search-input" placeholder="Search by name, location, or diagnosis...">
+                                <select id="table-filter-status" class="table-filter-select">
+                                    <option value="">All Status</option>
+                                    <option value="Critical">Critical</option>
+                                    <option value="Stable">Stable</option>
+                                    <option value="Recovered">Recovered</option>
+                                </select>
+                                <select id="table-filter-diagnosis" class="table-filter-select">
+                                    <option value="">All Diagnoses</option>
+                                    <option value="Dengue">Dengue</option>
+                                    <option value="Cholera">Cholera</option>
+                                    <option value="Typhoid">Typhoid</option>
+                                    <option value="Influenza">Influenza</option>
+                                    <option value="COVID-19">High Flu</option>
+                                </select>
+                                <input type="date" id="table-filter-date-from" class="table-filter-date" placeholder="From Date">
+                                <input type="date" id="table-filter-date-to" class="table-filter-date" placeholder="To Date">
+                                <button type="button" id="table-clear-filters" class="btn-mini">Clear Filters</button>
+                            </div>
+                            <div class="table-wrapper" id="table-wrapper">
+                                <div class="loading-overlay" id="table-loading" style="display: none;">
+                                    <div class="loading-spinner"></div>
+                                    <div class="loading-text">Loading data...</div>
+                                </div>
                                 <table class="data-table">
                                     <thead>
                                         <tr>
@@ -180,6 +264,11 @@
                                     <select id="r-brgy" class="form-select" required disabled>
                                         <option value="">Select Barangay</option>
                                     </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Street / Building Name <span class="form-label-optional">(Optional)</span></label>
+                                    <input type="text" id="r-street" class="form-input" placeholder="e.g., Main Street, Building Name">
                                 </div>
 
                                 <div class="form-group">
