@@ -1,9 +1,10 @@
 (function () {
+    // Use CONFIG from config.js if available, otherwise fallback to defaults
     const SUPABASE_URL = 'https://sxfcohtvewuadrvnmeka.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4ZmNvaHR2ZXd1YWRydm5tZWthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2OTMyMDUsImV4cCI6MjA4MTI2OTIwNX0.5bDoDWt8Yt58B78WcKvLLyzEMJzain68K1Rk77L9QgM';
 
     const PSGC_BASE_URL = 'https://psgc.cloud/api';
-
+    
     let supabaseClient = null;
     let supabaseChannel = null;
 
@@ -23,12 +24,28 @@
 
     const LEGACY_LOCATION_COORDS = {};
 
+    // Filter state
+    let filteredReportList = [];
+    let currentFilters = {
+        search: '',
+        status: '',
+        diagnosis: '',
+        dateFrom: '',
+        dateTo: ''
+    };
+
     function qs(id) {
         return document.getElementById(id);
     }
 
     function safeText(value) {
         return String(value == null ? '' : value);
+    }
+
+    function showLoading(elementId, show) {
+        const el = qs(elementId);
+        if (!el) return;
+        el.style.display = show ? 'flex' : 'none';
     }
 
     function setDateInputToToday(id) {
@@ -308,21 +325,51 @@
         });
     }
 
-    async function geocodeBarangayHall(provinceName, muniName, brgyName) {
-    // Remove 'Barangay Hall,' so we only search the barangay.
-    const q = `${brgyName}, ${muniName}, ${provinceName}, Philippines`;
-        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
-        try {
-            const data = await fetchJson(url);
-            if (!Array.isArray(data) || data.length === 0) return null;
-            const it = data[0];
-            const lat = Number(it.lat);
-            const lng = Number(it.lon);
-            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-            return { lat, lng };
-        } catch {
-            return null;
+    async function geocodeBarangayHall(provinceName, muniName, brgyName, streetName) {
+        // Try multiple geocoding queries with increasing specificity
+        const queries = [];
+        
+        // If street name provided, try with it first
+        if (streetName && streetName.trim()) {
+            queries.push(`${streetName.trim()}, ${brgyName}, ${muniName}, ${provinceName}, Philippines`);
         }
+        
+        // Try with barangay hall
+        queries.push(`Barangay Hall, ${brgyName}, ${muniName}, ${provinceName}, Philippines`);
+        
+        // Try with just barangay
+        queries.push(`${brgyName}, ${muniName}, ${provinceName}, Philippines`);
+        
+        // Try with municipality and province as fallback
+        queries.push(`${muniName}, ${provinceName}, Philippines`);
+
+        for (const query of queries) {
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+                const data = await fetchJson(url);
+                
+                if (Array.isArray(data) && data.length > 0) {
+                    const it = data[0];
+                    const lat = Number(it.lat);
+                    const lng = Number(it.lon);
+                    
+                    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                        // Validate coordinates are within Philippines bounds
+                        if (lat >= 4.0 && lat <= 21.0 && lng >= 116.0 && lng <= 127.0) {
+                            return { lat, lng };
+                        }
+                    }
+                }
+                
+                // Add delay to respect Nominatim rate limits
+                await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (err) {
+                console.warn('Geocoding attempt failed:', query, err);
+                // Continue to next query
+            }
+        }
+        
+        return null;
     }
 
     function mulberry32(a) {
@@ -476,13 +523,94 @@
         updateChart();
     }
 
+    function applyFilters() {
+        filteredReportList = reportList.filter(item => {
+            if (!item) return false;
+
+            // Search filter
+            if (currentFilters.search) {
+                const searchLower = currentFilters.search.toLowerCase();
+                const matchesSearch = 
+                    safeText(item.name || '').toLowerCase().includes(searchLower) ||
+                    safeText(item.loc || '').toLowerCase().includes(searchLower) ||
+                    safeText(item.diag || '').toLowerCase().includes(searchLower) ||
+                    safeText(item.province || '').toLowerCase().includes(searchLower) ||
+                    safeText(item.municipality || '').toLowerCase().includes(searchLower) ||
+                    safeText(item.barangay || '').toLowerCase().includes(searchLower);
+                if (!matchesSearch) return false;
+            }
+
+            // Status filter
+            if (currentFilters.status && item.status !== currentFilters.status) {
+                return false;
+            }
+
+            // Diagnosis filter
+            if (currentFilters.diagnosis && item.diag !== currentFilters.diagnosis) {
+                return false;
+            }
+
+            // Date range filter
+            if (currentFilters.dateFrom || currentFilters.dateTo) {
+                if (!item.date) return false;
+                const itemDate = new Date(item.date);
+                if (isNaN(itemDate.getTime())) return false;
+
+                if (currentFilters.dateFrom) {
+                    const fromDate = new Date(currentFilters.dateFrom);
+                    if (itemDate < fromDate) return false;
+                }
+
+                if (currentFilters.dateTo) {
+                    const toDate = new Date(currentFilters.dateTo);
+                    toDate.setHours(23, 59, 59, 999); // Include entire end date
+                    if (itemDate > toDate) return false;
+                }
+            }
+
+            return true;
+        });
+
+        // Update result count
+        const countEl = qs('table-result-count');
+        if (countEl) {
+            const total = reportList.length;
+            const filtered = filteredReportList.length;
+            if (filtered === total) {
+                countEl.textContent = `${total} records`;
+            } else {
+                countEl.textContent = `${filtered} of ${total} records`;
+            }
+        }
+    }
+
     function renderTable() {
         const tbody = qs('report-table-body');
         if (!tbody) return;
 
+        showLoading('table-loading', true);
+
+        applyFilters();
+
         tbody.innerHTML = '';
 
-        reportList.forEach(item => {
+        if (filteredReportList.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 5;
+            td.style.textAlign = 'center';
+            td.style.padding = '40px';
+            td.style.color = '#64748b';
+            td.textContent = currentFilters.search || currentFilters.status || currentFilters.diagnosis || currentFilters.dateFrom || currentFilters.dateTo
+                ? 'No records match your filters'
+                : 'No records found';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            showLoading('table-loading', false);
+            return;
+        }
+
+        filteredReportList.forEach(item => {
             if (!item) return;
             const tr = document.createElement('tr');
 
@@ -529,16 +657,91 @@
 
             tbody.appendChild(tr);
         });
+
+        showLoading('table-loading', false);
+    }
+
+    function initTableFilters() {
+        const searchInput = qs('table-search');
+        const statusFilter = qs('table-filter-status');
+        const diagnosisFilter = qs('table-filter-diagnosis');
+        const dateFromFilter = qs('table-filter-date-from');
+        const dateToFilter = qs('table-filter-date-to');
+        const clearBtn = qs('table-clear-filters');
+
+        const updateFilters = () => {
+            currentFilters.search = searchInput ? safeText(searchInput.value || '').trim() : '';
+            currentFilters.status = statusFilter ? safeText(statusFilter.value || '') : '';
+            currentFilters.diagnosis = diagnosisFilter ? safeText(diagnosisFilter.value || '') : '';
+            currentFilters.dateFrom = dateFromFilter ? safeText(dateFromFilter.value || '') : '';
+            currentFilters.dateTo = dateToFilter ? safeText(dateToFilter.value || '') : '';
+            renderTable();
+        };
+
+        if (searchInput) {
+            let searchTimeout;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(updateFilters, 300); // Debounce
+            });
+        }
+
+        if (statusFilter) statusFilter.addEventListener('change', updateFilters);
+        if (diagnosisFilter) diagnosisFilter.addEventListener('change', updateFilters);
+        if (dateFromFilter) dateFromFilter.addEventListener('change', updateFilters);
+        if (dateToFilter) dateToFilter.addEventListener('change', updateFilters);
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                currentFilters = { search: '', status: '', diagnosis: '', dateFrom: '', dateTo: '' };
+                if (searchInput) searchInput.value = '';
+                if (statusFilter) statusFilter.value = '';
+                if (diagnosisFilter) diagnosisFilter.value = '';
+                if (dateFromFilter) dateFromFilter.value = '';
+                if (dateToFilter) dateToFilter.value = '';
+                renderTable();
+            });
+        }
     }
 
     function updateChart() {
         const ctx = qs('trendChart');
         if (!ctx || !window.Chart) return;
 
-        const critical = reportList.filter(r => r && r.status === 'Critical').length;
-        const stable = reportList.filter(r => r && r.status === 'Stable').length;
-        const recovered = reportList.filter(r => r && r.status === 'Recovered').length;
-        const dataValues = [critical, stable, recovered];
+        showLoading('chart-loading', true);
+
+        // Group reports by month
+        const monthlyData = {};
+        const now = new Date();
+        const last6Months = [];
+
+        // Generate last 6 months labels
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            last6Months.push({ key: monthKey, label: monthLabel });
+            monthlyData[monthKey] = { critical: 0, stable: 0, recovered: 0 };
+        }
+
+        // Count cases by month and status
+        reportList.forEach(report => {
+            if (!report || !report.date) return;
+            const reportDate = new Date(report.date);
+            if (isNaN(reportDate.getTime())) return;
+
+            const monthKey = `${reportDate.getFullYear()}-${String(reportDate.getMonth() + 1).padStart(2, '0')}`;
+            if (monthlyData[monthKey]) {
+                if (report.status === 'Critical') monthlyData[monthKey].critical++;
+                else if (report.status === 'Stable') monthlyData[monthKey].stable++;
+                else if (report.status === 'Recovered') monthlyData[monthKey].recovered++;
+            }
+        });
+
+        const labels = last6Months.map(m => m.label);
+        const criticalData = last6Months.map(m => monthlyData[m.key].critical);
+        const stableData = last6Months.map(m => monthlyData[m.key].stable);
+        const recoveredData = last6Months.map(m => monthlyData[m.key].recovered);
 
         const whiteBackground = {
             id: 'customCanvasBackgroundColor',
@@ -561,9 +764,9 @@
                         const value = dataset.data[index];
                         if (value > 0) {
                             c.fillStyle = '#475569';
-                            c.font = 'bold 14px Segoe UI';
+                            c.font = 'bold 12px Segoe UI';
                             c.textAlign = 'center';
-                            c.fillText(String(value), bar.x, bar.y - 10);
+                            c.fillText(String(value), bar.x, bar.y - 8);
                         }
                     });
                 });
@@ -571,31 +774,59 @@
         };
 
         if (trendChart) {
-            trendChart.data.datasets[0].data = dataValues;
+            trendChart.data.labels = labels;
+            trendChart.data.datasets[0].data = criticalData;
+            trendChart.data.datasets[1].data = stableData;
+            trendChart.data.datasets[2].data = recoveredData;
             trendChart.update();
+            showLoading('chart-loading', false);
             return;
         }
 
         trendChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Critical', 'Stable', 'Recovered'],
-                datasets: [{
-                    label: 'Patient Status',
-                    data: dataValues,
-                    backgroundColor: ['#ef4444', '#f97316', '#10b981'],
-                    borderRadius: 6
-                }]
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Critical',
+                        data: criticalData,
+                        backgroundColor: '#ef4444',
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'Stable',
+                        data: stableData,
+                        backgroundColor: '#f97316',
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'Recovered',
+                        data: recoveredData,
+                        backgroundColor: '#10b981',
+                        borderRadius: 6
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 layout: { padding: { top: 20 } },
-                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
-                plugins: { legend: { display: false } }
+                scales: { 
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                    x: { stacked: false }
+                },
+                plugins: { 
+                    legend: { 
+                        display: true,
+                        position: 'top'
+                    } 
+                }
             },
             plugins: [whiteBackground, dataLabelPlugin]
         });
+
+        showLoading('chart-loading', false);
     }
 
     function downloadChartImage() {
@@ -608,15 +839,29 @@
     }
 
     function downloadCSV() {
-        if (reportList.length === 0) {
+        // Use filtered list if filters are active, otherwise use full list
+        const dataToExport = (currentFilters.search || currentFilters.status || 
+                              currentFilters.diagnosis || currentFilters.dateFrom || 
+                              currentFilters.dateTo) ? filteredReportList : reportList;
+
+        if (dataToExport.length === 0) {
             showToast('warning', 'No data', 'No data to export.');
             return;
         }
 
-        let csv = 'Date,Name,Location,Diagnosis,Status\n';
-        reportList.forEach(r => {
+        let csv = 'Date,Name,Location,Province,Municipality,Barangay,Diagnosis,Status\n';
+        dataToExport.forEach(r => {
             if (!r) return;
-            const row = [r.date, r.name, r.loc, r.diag, r.status]
+            const row = [
+                r.date, 
+                r.name, 
+                r.loc, 
+                r.province || '',
+                r.municipality || '',
+                r.barangay || '',
+                r.diag, 
+                r.status
+            ]
                 .map(v => `"${safeText(v).replace(/"/g, '""')}"`)
                 .join(',');
             csv += row + '\n';
@@ -626,7 +871,10 @@
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'EpiWatch_Data_Report.csv';
+        const filterSuffix = (currentFilters.search || currentFilters.status || 
+                             currentFilters.diagnosis || currentFilters.dateFrom || 
+                             currentFilters.dateTo) ? '_Filtered' : '';
+        link.download = `EpiWatch_Data_Report${filterSuffix}.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -708,27 +956,41 @@
             refreshUI();
 
             if (supabaseClient) {
+                // Build update object without street column (if it doesn't exist in DB)
+                const updateData = {
+                    date: next.date,
+                    name: next.name,
+                    loc: next.loc,
+                    province: next.province || null,
+                    municipality: next.municipality || null,
+                    barangay: next.barangay || null,
+                    lat: next.lat || null,
+                    lng: next.lng || null,
+                    diag: next.diag,
+                    status: next.status
+                };
+                // Only include street if it exists in the report object
+                // (We'll add it to DB schema separately if needed)
+
                 const { error } = await supabaseClient
                     .from('reports')
-                    .update({
-                        date: next.date,
-                        name: next.name,
-                        loc: next.loc,
-                        province: next.province || null,
-                        municipality: next.municipality || null,
-                        barangay: next.barangay || null,
-                        lat: next.lat || null,
-                        lng: next.lng || null,
-                        diag: next.diag,
-                        status: next.status
-                    })
+                    .update(updateData)
                     .eq('id', id);
 
                 if (error) {
-                    showToast('error', 'Sync failed', 'Update saved locally but failed to sync.');
+                    console.error('Supabase update error:', error);
+                    showToast('error', 'Sync failed', `Update failed: ${error.message || 'Database error'}. Check Supabase policies.`);
+                    closeModal();
+                    return;
                 }
+
+                // Reload from Supabase to ensure sync
+                await loadReportsFromSupabase();
+            } else {
+                saveLocalReports();
             }
 
+            refreshUI();
             showToast('success', 'Updated', 'Record updated successfully.');
             closeModal();
         };
@@ -751,56 +1013,93 @@
         const ok = await showConfirm('Delete record', `Delete record for ${safeText(report.name || 'this patient')}?`, 'Delete', 'Cancel', true);
         if (!ok) return;
 
-        reportList = reportList.filter(r => r && r.id !== id);
-        saveLocalReports();
-        refreshUI();
-
         if (supabaseClient) {
-            const { error } = await supabaseClient
+            // First, remove from local list for immediate UI update
+            const originalList = [...reportList];
+            reportList = reportList.filter(r => r && r.id !== id);
+            saveLocalReports();
+            refreshUI();
+
+            // Then try to delete from Supabase
+            const { data, error } = await supabaseClient
                 .from('reports')
                 .delete()
-                .eq('id', id);
+                .eq('id', id)
+                .select();
 
             if (error) {
-                showToast('error', 'Sync failed', 'Delete applied locally but failed to sync.');
+                console.error('Supabase delete error:', error);
+                // Restore local list if delete failed
+                reportList = originalList;
+                saveLocalReports();
+                refreshUI();
+                showToast('error', 'Sync failed', `Delete failed: ${error.message || 'Database error'}. Check Supabase policies.`);
+                return;
             }
-        }
 
-        showToast('success', 'Deleted', 'Record deleted successfully.');
+            // Reload from Supabase to ensure sync
+            await loadReportsFromSupabase();
+            showToast('success', 'Deleted', 'Record deleted successfully.');
+        } else {
+            reportList = reportList.filter(r => r && r.id !== id);
+            saveLocalReports();
+            refreshUI();
+            showToast('success', 'Deleted', 'Record deleted successfully.');
+        }
     }
 
     async function loadReportsFromSupabase() {
         if (!supabaseClient) return;
-        const { data, error } = await supabaseClient
-            .from('reports')
-            .select('*')
-            .order('id', { ascending: false });
+        
+        showLoading('table-loading', true);
+        
+        try {
+            const { data, error } = await supabaseClient
+                .from('reports')
+                .select('*')
+                .order('id', { ascending: false });
 
-        if (error) {
-            showToast('warning', 'Supabase', 'Could not load from Supabase. Using local data.');
-            return;
+            if (error) {
+                console.error('Supabase load error:', error);
+                showToast('warning', 'Supabase', `Could not load: ${error.message || 'Database error'}. Using local data.`);
+                showLoading('table-loading', false);
+                return;
+            }
+
+            if (!Array.isArray(data)) {
+                showLoading('table-loading', false);
+                return;
+            }
+            
+            reportList = data.map(r => ({
+                id: Number(r.id),
+                date: r.date,
+                name: r.name,
+                loc: r.loc,
+                province: r.province,
+                municipality: r.municipality,
+                barangay: r.barangay,
+                street: r.street || null,
+                lat: typeof r.lat === 'number' ? r.lat : (r.lat ? Number(r.lat) : null),
+                lng: typeof r.lng === 'number' ? r.lng : (r.lng ? Number(r.lng) : null),
+                diag: r.diag,
+                status: r.status
+            }));
+            saveLocalReports();
+            refreshUI();
+        } catch (err) {
+            showToast('error', 'Load failed', 'Failed to load data from server.');
+        } finally {
+            showLoading('table-loading', false);
         }
-
-        if (!Array.isArray(data)) return;
-        reportList = data.map(r => ({
-            id: Number(r.id),
-            date: r.date,
-            name: r.name,
-            loc: r.loc,
-            province: r.province,
-            municipality: r.municipality,
-            barangay: r.barangay,
-            lat: typeof r.lat === 'number' ? r.lat : (r.lat ? Number(r.lat) : null),
-            lng: typeof r.lng === 'number' ? r.lng : (r.lng ? Number(r.lng) : null),
-            diag: r.diag,
-            status: r.status
-        }));
-        saveLocalReports();
-        refreshUI();
     }
 
     function initSupabaseSync() {
         if (!window.supabase || !window.supabase.createClient) return;
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+            console.warn('Supabase credentials not configured');
+            return;
+        }
 
         try {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -828,6 +1127,12 @@
         if (u) u.textContent = safeText(currentUsername || '—');
         if (r) r.textContent = safeText(currentUserRole || '—');
         if (p) p.value = safeText(currentPasswordMasked || '');
+
+        // Update desktop sidebar user info
+        const sidebarUser = qs('sidebar-user-display');
+        const sidebarRole = qs('sidebar-user-role');
+        if (sidebarUser) sidebarUser.textContent = safeText(currentUsername || '—');
+        if (sidebarRole) sidebarRole.textContent = safeText(currentUserRole || '—');
     }
 
     function applyRolePermissions() {
@@ -850,11 +1155,56 @@
         }
     }
 
+    function toggleSidebar(open) {
+        const sidebar = qs('desktop-sidebar');
+        const backdrop = qs('sidebar-backdrop');
+        const hamburger = qs('hamburger-btn');
+        
+        if (open === undefined) {
+            open = !sidebar?.classList.contains('open');
+        }
+        
+        if (sidebar) {
+            if (open) {
+                sidebar.classList.add('open');
+            } else {
+                sidebar.classList.remove('open');
+            }
+        }
+        
+        if (backdrop) {
+            if (open) {
+                backdrop.classList.add('active');
+            } else {
+                backdrop.classList.remove('active');
+            }
+        }
+        
+        if (hamburger) {
+            if (open) {
+                hamburger.classList.add('active');
+            } else {
+                hamburger.classList.remove('active');
+            }
+        }
+    }
+
+    function closeSidebar() {
+        toggleSidebar(false);
+    }
+
     function showPage(pageId, btn) {
         const pages = document.querySelectorAll('.page');
         pages.forEach(p => p.classList.remove('active'));
 
-        const navItems = document.querySelectorAll('.nav-item');
+        // Update desktop nav items
+        const desktopNavItems = document.querySelectorAll('.desktop-nav-item');
+        desktopNavItems.forEach(n => {
+            if (!n.classList.contains('logout')) n.classList.remove('active');
+        });
+
+        // Update mobile nav items (if any)
+        const navItems = document.querySelectorAll('.nav-item:not(.desktop-nav-item)');
         navItems.forEach(n => {
             if (!n.classList.contains('logout')) n.classList.remove('active');
         });
@@ -865,8 +1215,19 @@
         if (btn) {
             btn.classList.add('active');
         } else {
-            const byData = document.querySelector(`.nav-item[data-page="${pageId}"]`);
-            if (byData) byData.classList.add('active');
+            // Try desktop nav first
+            const desktopNav = document.querySelector(`.desktop-nav-item[data-page="${pageId}"]`);
+            if (desktopNav) {
+                desktopNav.classList.add('active');
+            } else {
+                const byData = document.querySelector(`.nav-item[data-page="${pageId}"]`);
+                if (byData) byData.classList.add('active');
+            }
+        }
+
+        // Close sidebar on mobile after navigation
+        if (window.innerWidth <= 768) {
+            closeSidebar();
         }
 
         const title = qs('page-title');
@@ -908,35 +1269,91 @@
         }
     }
 
-    function handleLogin(e) {
+    async function handleLogin(e) {
         e.preventDefault();
         const u = safeText(qs('login-user')?.value || '').trim();
         const p = safeText(qs('login-pass')?.value || '').trim();
 
-        const adminOk = (u === 'maui wowie' && p === 'honolulu123');
-        const viewerOk = (u === 'viewer' && p === 'viewer123');
-
-        if (!adminOk && !viewerOk) {
-            setLoginError('Incorrect Username or Password');
-            showToast('error', 'Login failed', 'Incorrect username or password.');
+        if (!u || !p) {
+            setLoginError('Please enter both username and password');
+            showToast('error', 'Login failed', 'Please enter both username and password.');
             return;
         }
 
         setLoginError('');
+        const loginBtn = qs('login-submit-btn');
+        const loginBtnText = qs('login-btn-text');
+        const loginLoading = qs('login-loading');
+        if (loginBtn) loginBtn.disabled = true;
+        if (loginBtnText) loginBtnText.style.display = 'none';
+        if (loginLoading) loginLoading.style.display = 'inline-flex';
 
-        currentUsername = u;
-        currentUserRole = adminOk ? 'admin' : 'viewer';
-        currentPasswordMasked = p;
+        try {
+            // Try Supabase Auth first if available
+            if (supabaseClient && typeof supabaseClient.auth !== 'undefined') {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: u,
+                    password: p
+                });
 
-        const login = qs('login-screen');
-        const app = qs('app-container');
-        if (login) login.style.display = 'none';
-        if (app) app.style.display = 'flex';
+                if (!error && data?.user) {
+                    // Get user role from metadata or user_metadata
+                    const userRole = data.user.user_metadata?.role || data.user.app_metadata?.role || 'viewer';
+                    currentUsername = data.user.email || u;
+                    currentUserRole = userRole;
+                    currentPasswordMasked = '••••••••';
+                    
+                    const login = qs('login-screen');
+                    const app = qs('app-container');
+                    if (login) login.style.display = 'none';
+                    if (app) app.style.display = 'flex';
 
-        const display = qs('user-display');
-        if (display) display.textContent = safeText(currentUsername);
+                    const display = qs('user-display');
+                    if (display) display.textContent = safeText(currentUsername);
 
-        initApp();
+                    initApp();
+                    showLoading('login-loading', false);
+                    return;
+                }
+            }
+
+            // Fallback to legacy authentication (for backward compatibility)
+            // NOTE: This is insecure and should be replaced with proper authentication
+            const adminOk = (u === 'maui wowie' && p === 'honolulu123');
+            const viewerOk = (u === 'viewer' && p === 'viewer123');
+
+            if (!adminOk && !viewerOk) {
+                setLoginError('Incorrect Username or Password');
+                showToast('error', 'Login failed', 'Incorrect username or password.');
+                if (loginBtn) loginBtn.disabled = false;
+                if (loginBtnText) loginBtnText.style.display = 'inline';
+                if (loginLoading) loginLoading.style.display = 'none';
+                return;
+            }
+
+            currentUsername = u;
+            currentUserRole = adminOk ? 'admin' : 'viewer';
+            currentPasswordMasked = p;
+
+            const login = qs('login-screen');
+            const app = qs('app-container');
+            if (login) login.style.display = 'none';
+            if (app) app.style.display = 'flex';
+
+            const display = qs('user-display');
+            if (display) display.textContent = safeText(currentUsername);
+
+            initApp();
+        } catch (err) {
+            setLoginError('Login error occurred');
+            showToast('error', 'Login failed', 'An error occurred during login.');
+            const loginBtn = qs('login-submit-btn');
+            const loginBtnText = qs('login-btn-text');
+            const loginLoading = qs('login-loading');
+            if (loginBtn) loginBtn.disabled = false;
+            if (loginBtnText) loginBtnText.style.display = 'inline';
+            if (loginLoading) loginLoading.style.display = 'none';
+        }
     }
 
     async function handleLogout() {
@@ -1012,20 +1429,35 @@
                 return;
             }
 
-            const geo = await geocodeBarangayHall(provinceName, muniName, brgyName);
+            const streetName = safeText(qs('r-street')?.value || '').trim();
+            
+            showLoading('table-loading', true);
+            const geo = await geocodeBarangayHall(provinceName, muniName, brgyName, streetName);
+            showLoading('table-loading', false);
+            
             if (!geo || !Number.isFinite(geo.lat) || !Number.isFinite(geo.lng)) {
-                showToast('error', 'Location failed', 'Could not locate the selected barangay on the map.');
+                showToast('error', 'Location Error', 'Could not locate the selected address. Please try adding a street name or building name, or verify the location details.');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = prevBtnText;
+                }
+                submitInFlight = false;
                 return;
             }
+
+            const locString = streetName 
+                ? `${streetName}, ${brgyName}, ${muniName}, ${provinceName}`
+                : `${brgyName}, ${muniName}, ${provinceName}`;
 
             const newReport = {
                 id: Date.now(),
                 date: dateVal,
                 name: nameVal,
-                loc: `${provinceName} - ${muniName} - ${brgyName}`,
+                loc: locString,
                 province: provinceName,
                 municipality: muniName,
                 barangay: brgyName,
+                street: streetName || null,
                 lat: geo.lat,
                 lng: geo.lng,
                 diag: safeText(qs('r-diag')?.value || ''),
@@ -1037,7 +1469,8 @@
             focusLatestOnNextMapOpen = true;
 
             if (supabaseClient) {
-                const { error } = await supabaseClient.from('reports').insert({
+                // Build insert object without street column (if it doesn't exist in DB)
+                const insertData = {
                     id: newReport.id,
                     date: newReport.date,
                     name: newReport.name,
@@ -1049,13 +1482,25 @@
                     lng: newReport.lng,
                     diag: newReport.diag,
                     status: newReport.status
-                });
+                };
+                // Only include street if column exists in DB
+                // (We'll add it to DB schema separately if needed)
+
+                const { error } = await supabaseClient.from('reports').insert(insertData);
 
                 if (error) {
+                    console.error('Supabase insert error:', error);
                     saveLocalReports();
                     refreshUI();
-                    showToast('error', 'Sync failed', 'Record saved locally but failed to sync.');
+                    showToast('error', 'Sync failed', `Save failed: ${error.message || 'Database error'}. Check Supabase policies.`);
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = prevBtnText;
+                    }
+                    submitInFlight = false;
+                    return;
                 } else {
+                    // Reload from Supabase to ensure sync
                     await loadReportsFromSupabase();
                 }
             } else {
@@ -1067,6 +1512,7 @@
             setDateInputToToday('r-date');
             clearAndDisableSelect(qs('r-muni'), 'Select Municipality / City');
             clearAndDisableSelect(qs('r-brgy'), 'Select Barangay');
+            if (qs('r-street')) qs('r-street').value = '';
             showToast('success', 'Saved', 'Record saved successfully.');
         } catch (err) {
             showToast('error', 'Save failed', 'Something went wrong while saving. Please try again.');
@@ -1081,9 +1527,11 @@
 
     function initApp() {
         reportList = loadLocalReports();
+        filteredReportList = [...reportList];
 
         initSupabaseSync();
         initAddressSelectors();
+        initTableFilters();
 
         setDateInputToToday('r-date');
 
@@ -1114,6 +1562,68 @@
 
         updateProfileUI();
         showToast('success', 'Welcome', `Signed in as ${safeText(currentUsername)} (${safeText(currentUserRole)})`);
+
+        // Detect mobile browser vs mobile app
+        if (isMobileBrowser()) {
+            document.body.classList.add('mobile-browser');
+            document.body.classList.remove('mobile-app');
+        } else if (window.innerWidth <= 768) {
+            document.body.classList.add('mobile-app');
+            document.body.classList.remove('mobile-browser');
+        } else {
+            document.body.classList.remove('mobile-app', 'mobile-browser');
+        }
+
+        // Initialize desktop sidebar
+        initDesktopSidebar();
+    }
+
+    function isMobileBrowser() {
+        // Check if it's a mobile device
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        // Check if it's running in standalone mode (PWA/App) vs browser
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                           window.navigator.standalone || 
+                           document.referrer.includes('android-app://');
+        
+        // Mobile browser = mobile device but NOT standalone
+        return isMobileDevice && !isStandalone;
+    }
+
+    function initDesktopSidebar() {
+        const hamburger = qs('hamburger-btn');
+        const sidebar = qs('desktop-sidebar');
+        const backdrop = qs('sidebar-backdrop');
+        const closeBtn = qs('sidebar-close-btn');
+        const desktopNavItems = document.querySelectorAll('.desktop-nav-item[data-page]');
+
+        if (hamburger) {
+            hamburger.addEventListener('click', () => toggleSidebar());
+        }
+
+        if (backdrop) {
+            backdrop.addEventListener('click', closeSidebar);
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeSidebar);
+        }
+
+        desktopNavItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const pageId = item.getAttribute('data-page');
+                if (pageId) {
+                    showPage(pageId, item);
+                }
+            });
+        });
+
+        // Auto-open sidebar on desktop or mobile browser by default
+        const shouldShowDesktopUI = window.innerWidth > 768 || isMobileBrowser();
+        if (shouldShowDesktopUI) {
+            setTimeout(() => toggleSidebar(true), 100);
+        }
     }
 
     window.handleLogin = handleLogin;
@@ -1125,10 +1635,25 @@
     window.openEditReport = openEditReport;
     window.deleteReport = deleteReport;
 
+    function updateMobileBrowserDetection() {
+        if (isMobileBrowser()) {
+            document.body.classList.add('mobile-browser');
+            document.body.classList.remove('mobile-app');
+        } else if (window.innerWidth <= 768) {
+            document.body.classList.add('mobile-app');
+            document.body.classList.remove('mobile-browser');
+        } else {
+            document.body.classList.remove('mobile-app', 'mobile-browser');
+        }
+    }
+
+    window.addEventListener('resize', () => {
+        updateMobileBrowserDetection();
+    });
+
     document.addEventListener('DOMContentLoaded', () => {
         ensureToastContainer();
         updateProfileUI();
+        updateMobileBrowserDetection();
     });
 })();
-
-
