@@ -1014,7 +1014,7 @@
 
             const geo = await geocodeBarangayHall(provinceName, muniName, brgyName);
             if (!geo || !Number.isFinite(geo.lat) || !Number.isFinite(geo.lng)) {
-                showToast('error', 'Location failed', 'Could not locate the selected barangay hall on the map.');
+                showToast('error', 'Location failed', 'Could not locate the selected barangay on the map.');
                 return;
             }
 
@@ -1130,4 +1130,5 @@
         updateProfileUI();
     });
 })();
+
 
